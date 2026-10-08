@@ -107,7 +107,7 @@
   { "id": "chat-hamburguesas-aguillon", "ratings": {"precios":5,"sabor":5,"atencion":4,"menu":4}, "name": "Hamburguesas Aguillón", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
   { "id": "chat-tacos-aguillon", "ratings": {"precios":4,"sabor":4,"atencion":4,"menu":4}, "name": "Tacos Aguillón", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
   {
-    "id": "chat-granel-mas",
+    "id": "chat-granel-mas", "ratings": {"precios":5,"sabor":5,"atencion":4,"menu":5},
     "name": "Cafetería Granel & más",
     "date": "2026-09-23",
     "note": "Foto y reseña compartidas el 23 de septiembre.",
@@ -116,7 +116,7 @@
     ]
   },
   {
-    "id": "chat-restaurante-601",
+    "id": "chat-restaurante-601", "ratings": {"precios":4,"sabor":5,"atencion":5,"menu":5},
     "name": "Restaurante 601",
     "date": "2026-09-23",
     "note": "Foto y reseña compartidas el 23 de septiembre.",
@@ -125,7 +125,7 @@
     ]
   },
   {
-    "id": "chat-cafe-country",
+    "id": "chat-cafe-country", "ratings": {"precios":3,"sabor":4,"atencion":5,"menu":5},
     "name": "Café Country",
     "date": "2026-10-04",
     "note": "Foto y reseña compartidas el 4 de octubre.",
