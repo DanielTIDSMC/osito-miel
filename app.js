@@ -691,11 +691,14 @@ async function getLocalSharedData() {
         place && typeof place === 'object' && typeof place.id === 'string' &&
         !deletedPlaceIds.includes(place.id)
     );
-    const getPhotoSize = (place) => place.photo instanceof Blob ? place.photo.size : 0;
-    const totalPhotoBytes = activePlaces.reduce((total, place) => total + getPhotoSize(place), 0);
-    if (activePlaces.some((place) => getPhotoSize(place) > MAX_SYNC_PLACE_PHOTO_BYTES) ||
+    const getPhotoSizes = (place) => [
+        ...(place.photo instanceof Blob ? [place.photo.size] : []),
+        ...(Array.isArray(place.additionalPhotos) ? place.additionalPhotos.filter((photo) => photo instanceof Blob).map((photo) => photo.size) : [])
+    ];
+    const totalPhotoBytes = activePlaces.reduce((total, place) => total + getPhotoSizes(place).reduce((sum, size) => sum + size, 0), 0);
+    if (activePlaces.some((place) => getPhotoSizes(place).some((size) => size > MAX_SYNC_PLACE_PHOTO_BYTES)) ||
         totalPhotoBytes > MAX_SYNC_PHOTOS_BYTES) {
-        throw new Error('Las fotos superan el límite seguro para sincronizar. Reduce su tamaño o sincroniza menos fotos a la vez.');
+        throw new Error('Las fotos superan el l\u00edmite seguro para sincronizar. Reduce su tama\u00f1o o sincroniza menos fotos a la vez.');
     }
     return {
         memories,
@@ -713,7 +716,8 @@ async function getLocalSharedData() {
             name: place.name,
             date: place.date,
             note: place.note,
-            photo: place.photo instanceof Blob ? await blobToDataUrl(place.photo) : null
+            photo: place.photo instanceof Blob ? await blobToDataUrl(place.photo) : null,
+            additionalPhotos: await Promise.all((place.additionalPhotos || []).filter((photo) => photo instanceof Blob).map((photo) => blobToDataUrl(photo)))
         })))
     };
 }
@@ -810,7 +814,8 @@ async function saveLocalSharedData(data) {
             name: place.name,
             date: place.date,
             note: place.note,
-            photo: place.photo ? dataUrlToBlob(place.photo) : null
+            photo: place.photo ? dataUrlToBlob(place.photo) : null,
+            additionalPhotos: (place.additionalPhotos || []).map((photo) => dataUrlToBlob(photo))
         }));
         (data.deletedPlaceIds || []).forEach((id) => store.delete(id));
         transaction.oncomplete = resolve;
@@ -1108,7 +1113,9 @@ async function renderPlaces() {
                     placesMap.set(place.id, {
                         ...existing,
                         ...place,
-                        photos: existing.photos || place.photos
+                        photos: existing.photos || place.photos,
+                        date: placeOverrides[place.id] !== undefined ? placeOverrides[place.id] : place.date,
+                        additionalPhotos: place.additionalPhotos || existing.additionalPhotos || []
                     });
                 } else {
                     placesMap.set(place.id, place);
@@ -1128,11 +1135,15 @@ async function renderPlaces() {
             card.className = 'place-card';
             const photoStrip = document.createElement('div');
             photoStrip.className = 'place-photo-strip';
-            const photos = place.photo instanceof Blob
-                ? [{ blob: place.photo, alt: `Foto actualizada de ${place.name}` }]
-                : place.photos?.length
-                    ? place.photos
-                    : [];
+            const photos = [
+                ...(place.photo instanceof Blob
+                    ? [{ blob: place.photo, alt: `Foto actualizada de ${place.name}` }]
+                    : (place.photos || [])),
+                ...(place.additionalPhotos || []).map((blob, photoIndex) => ({
+                    blob,
+                    alt: `Foto adicional ${photoIndex + 1} de ${place.name}`
+                }))
+            ];
             photoStrip.dataset.photoCount = String(photos.length);
 
             if (photos.length) {
@@ -1157,51 +1168,39 @@ async function renderPlaces() {
             const date = document.createElement('div');
             date.className = 'place-card-date';
 
-            if (place.date) {
-                date.textContent = new Intl.DateTimeFormat('es-MX', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                }).format(new Date(`${place.date}T12:00:00`));
-            } else {
-                const dateLabel = document.createElement('span');
-                dateLabel.className = 'place-card-date-label';
-                dateLabel.textContent = 'Fecha por confirmar';
-
-                const dateInput = document.createElement('input');
-                dateInput.type = 'date';
-                dateInput.className = 'place-card-date-input';
-                dateInput.setAttribute('aria-label', `Elegir fecha para ${place.name}`);
-
-                const confirmButton = document.createElement('button');
-                confirmButton.type = 'button';
-                confirmButton.className = 'place-confirm-date-button';
-                confirmButton.textContent = 'Confirmar fecha';
-
-                confirmButton.addEventListener('click', async () => {
-                    try {
-                        const newDate = dateInput.value;
-                        if (!newDate) {
-                            showToast('Elige primero una fecha en el calendario.');
-                            return;
-                        }
-
-                        // Guardar la fecha en Overrides únicamente al hacer clic en el botón
-                        const currentOverrides = loadPlaceOverrides();
-                        currentOverrides[place.id] = newDate;
-                        savePlaceOverrides(currentOverrides);
-
-                        await renderPlaces();
-                        scheduleCloudSync();
-                        showToast(`Fecha confirmada para ${place.name}`);
-                    } catch (error) {
-                        showPlaceFormError('No se pudo guardar la fecha:', error);
+            const dateLabel = document.createElement('span');
+            dateLabel.className = 'place-card-date-label';
+            dateLabel.textContent = place.date
+                ? new Intl.DateTimeFormat('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })
+                    .format(new Date(`${place.date}T12:00:00`))
+                : 'Fecha por confirmar';
+            const dateInput = document.createElement('input');
+            dateInput.type = 'date';
+            dateInput.className = 'place-card-date-input';
+            dateInput.value = place.date || '';
+            dateInput.setAttribute('aria-label', `Elegir fecha para ${place.name}`);
+            const confirmButton = document.createElement('button');
+            confirmButton.type = 'button';
+            confirmButton.className = 'place-confirm-date-button';
+            confirmButton.textContent = place.date ? 'Cambiar fecha' : 'Confirmar fecha';
+            confirmButton.addEventListener('click', async () => {
+                try {
+                    const newDate = dateInput.value;
+                    if (!newDate) {
+                        showToast('Elige primero una fecha en el calendario.');
+                        return;
                     }
-                });
-
-                date.append(dateLabel, dateInput, confirmButton);
-            }
-
+                    const currentOverrides = loadPlaceOverrides();
+                    currentOverrides[place.id] = newDate;
+                    savePlaceOverrides(currentOverrides);
+                    await renderPlaces();
+                    scheduleCloudSync();
+                    showToast(`Fecha guardada para ${place.name}`);
+                } catch (error) {
+                    showPlaceFormError('No se pudo guardar la fecha:', error);
+                }
+            });
+            date.append(dateLabel, dateInput, confirmButton);
             const title = document.createElement('h3');
             title.textContent = place.name;
             copy.append(date, title);
@@ -1241,7 +1240,8 @@ async function renderPlaces() {
                         name: place.name,
                         date: place.date || '',
                         note: place.note || '',
-                        photo
+                        photo,
+                        additionalPhotos: (await getPlaces()).find((saved) => saved.id === place.id)?.additionalPhotos || []
                     });
                     await renderPlaces();
                     scheduleCloudSync();
@@ -1256,6 +1256,49 @@ async function renderPlaces() {
                 }
             });
             copy.append(changePhotoButton, changePhotoInput);
+            const addPhotoButton = document.createElement('button');
+            addPhotoButton.className = 'place-change-photo-button';
+            addPhotoButton.type = 'button';
+            addPhotoButton.textContent = 'Agregar foto';
+            addPhotoButton.hidden = !place.date || photos.length === 0;
+            addPhotoButton.setAttribute('aria-label', `Agregar foto a ${place.name}`);
+            const addPhotoInput = document.createElement('input');
+            addPhotoInput.className = 'place-change-photo-input';
+            addPhotoInput.type = 'file';
+            addPhotoInput.accept = 'image/*';
+            addPhotoInput.hidden = true;
+            addPhotoInput.setAttribute('aria-label', `Elegir foto para agregar a ${place.name}`);
+            addPhotoButton.addEventListener('click', () => addPhotoInput.click());
+            addPhotoInput.addEventListener('change', async () => {
+                const file = addPhotoInput.files?.[0];
+                if (!file) return;
+                addPhotoButton.disabled = true;
+                addPhotoButton.textContent = 'Agregando foto...';
+                try {
+                    const photo = await compressPlacePhoto(file);
+                    const current = (await getPlaces()).find((saved) => saved.id === place.id);
+                    await updatePlace({
+                        id: place.id,
+                        name: place.name,
+                        date: current?.date || place.date || '',
+                        note: current?.note || place.note || '',
+                        photo: current?.photo || null,
+                        additionalPhotos: [...(current?.additionalPhotos || []), photo]
+                    });
+                    await renderPlaces();
+                    scheduleCloudSync();
+                    showToast(`Foto agregada a ${place.name}`);
+                } catch (error) {
+                    console.error(`No se pudo agregar una foto a ${place.name}:`, error);
+                    showToast(error.message || 'No se pudo agregar la foto.');
+                    addPhotoButton.disabled = false;
+                    addPhotoButton.textContent = 'Agregar foto';
+                } finally {
+                    addPhotoInput.value = '';
+                }
+            });
+            copy.append(addPhotoButton, addPhotoInput);
+
 
             if (!place.imported) {
                 const deleteButton = document.createElement('button');

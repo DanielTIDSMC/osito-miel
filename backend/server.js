@@ -67,14 +67,18 @@ function validateData(data) {
     for (const place of data.places || []) {
         if (!place || typeof place !== 'object' || typeof place.id !== 'string' ||
             typeof place.name !== 'string' || typeof place.date !== 'string' ||
-            typeof place.note !== 'string' || (place.photo !== null && typeof place.photo !== 'string')) return false;
-        if (place.photo === null) continue;
-        const photoMatch = /^data:image\/jpeg;base64,([A-Za-z0-9+/]*={0,2})$/.exec(place.photo);
-        if (!photoMatch) return false;
-        const photoBytes = Math.floor(photoMatch[1].length * 3 / 4);
-        if (photoBytes > MAX_PHOTO_BYTES) return false;
-        totalPhotoBytes += photoBytes;
-        if (totalPhotoBytes > MAX_PHOTOS_BYTES) return false;
+            typeof place.note !== 'string' || (place.photo !== null && typeof place.photo !== 'string') ||
+            (place.additionalPhotos !== undefined && (!Array.isArray(place.additionalPhotos) || place.additionalPhotos.length > 20 ||
+                place.additionalPhotos.some((photo) => typeof photo !== 'string')))) return false;
+        const photos = [...(place.photo === null ? [] : [place.photo]), ...(place.additionalPhotos || [])];
+        for (const photo of photos) {
+            const photoMatch = /^data:image\/jpeg;base64,([A-Za-z0-9+/]*={0,2})$/.exec(photo);
+            if (!photoMatch) return false;
+            const photoBytes = Math.floor(photoMatch[1].length * 3 / 4);
+            if (photoBytes > MAX_PHOTO_BYTES) return false;
+            totalPhotoBytes += photoBytes;
+            if (totalPhotoBytes > MAX_PHOTOS_BYTES) return false;
+        }
     }
     return true;
 }
