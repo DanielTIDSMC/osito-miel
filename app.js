@@ -685,9 +685,13 @@ async function getLocalSharedData() {
     const places = await getPlaces();
     const deletedPlaceIds = loadStoredList(DELETED_PLACES_KEY, (id) => typeof id === 'string');
     const placeOverrides = loadPlaceOverrides();
-    const activePlaces = places.filter((place) => !deletedPlaceIds.includes(place.id));
-    const totalPhotoBytes = activePlaces.reduce((total, place) => total + (place.photo ? place.photo.size : 0), 0);
-    if (activePlaces.some((place) => place.photo && place.photo.size > 2 * 1024 * 1024) || totalPhotoBytes > 7 * 1024 * 1024) {
+    const activePlaces = places.filter((place) =>
+        place && typeof place === 'object' && typeof place.id === 'string' &&
+        !deletedPlaceIds.includes(place.id)
+    );
+    const getPhotoSize = (place) => place.photo instanceof Blob ? place.photo.size : 0;
+    const totalPhotoBytes = activePlaces.reduce((total, place) => total + getPhotoSize(place), 0);
+    if (activePlaces.some((place) => getPhotoSize(place) > 2 * 1024 * 1024) || totalPhotoBytes > 7 * 1024 * 1024) {
         throw new Error('Las fotos superan el límite seguro para sincronizar. Reduce su tamaño o sincroniza menos fotos a la vez.');
     }
     return {
@@ -706,7 +710,7 @@ async function getLocalSharedData() {
             name: place.name,
             date: place.date,
             note: place.note,
-            photo: place.photo ? await blobToDataUrl(place.photo) : null
+            photo: place.photo instanceof Blob ? await blobToDataUrl(place.photo) : null
         })))
     };
 }
