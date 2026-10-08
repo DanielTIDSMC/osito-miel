@@ -29,6 +29,8 @@ const DELETED_PLACES_KEY = 'osito-miel.deleted-places.v1';
 const PLACE_OVERRIDES_KEY = 'osito-miel.place-overrides.v1';
 const PLACES_DATABASE = 'osito-miel-places';
 const PLACES_STORE = 'places';
+const MAX_SYNC_PLACE_PHOTO_BYTES = 2 * 1024 * 1024;
+const MAX_SYNC_PHOTOS_BYTES = 7 * 1024 * 1024;
 
 const DATE_IDEAS = [
     { id: 'sunset-picnic', title: 'Picnic al atardecer', category: 'Aire libre', detail: 'Lleven algo rico, una mantita y vean cómo se pinta el cielo.', emoji: '🌇', art: 'sunset', caption: 'una tardecita juntos' },
@@ -691,7 +693,8 @@ async function getLocalSharedData() {
     );
     const getPhotoSize = (place) => place.photo instanceof Blob ? place.photo.size : 0;
     const totalPhotoBytes = activePlaces.reduce((total, place) => total + getPhotoSize(place), 0);
-    if (activePlaces.some((place) => getPhotoSize(place) > 2 * 1024 * 1024) || totalPhotoBytes > 7 * 1024 * 1024) {
+    if (activePlaces.some((place) => getPhotoSize(place) > MAX_SYNC_PLACE_PHOTO_BYTES) ||
+        totalPhotoBytes > MAX_SYNC_PHOTOS_BYTES) {
         throw new Error('Las fotos superan el límite seguro para sincronizar. Reduce su tamaño o sincroniza menos fotos a la vez.');
     }
     return {
@@ -776,7 +779,11 @@ function mergeSharedData(local, remote, remoteUpdatedAt) {
         anniversary: localIsNewer ? (local.anniversary || remote.anniversary || '') : (remote.anniversary || local.anniversary || ''),
         deletedPlaceIds,
         placeOverrides: mergedOverrides,
-        places: mergeEntries(local.places, remote.places || [], (place) => place.id)
+        places: mergeEntries(
+            localIsNewer ? (remote.places || []) : local.places,
+            localIsNewer ? local.places : (remote.places || []),
+            (place) => place.id
+        )
             .filter((place) => !deletedPlaceIds.includes(place.id))
     };
 }
@@ -989,6 +996,17 @@ async function savePlace(place) {
     });
 }
 
+async function updatePlace(place) {
+    const database = await openPlacesDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = database.transaction(PLACES_STORE, 'readwrite');
+        transaction.objectStore(PLACES_STORE).put(place);
+        transaction.oncomplete = resolve;
+        transaction.onerror = () => reject(transaction.error || new Error('No se pudo actualizar el lugar.'));
+        transaction.onabort = () => reject(transaction.error || new Error('Se interrumpió la actualización del lugar.'));
+    });
+}
+
 async function deletePlace(id) {
     const database = await openPlacesDatabase();
     return new Promise((resolve, reject) => {
@@ -1110,10 +1128,10 @@ async function renderPlaces() {
             card.className = 'place-card';
             const photoStrip = document.createElement('div');
             photoStrip.className = 'place-photo-strip';
-            const photos = place.photos?.length
-                ? place.photos
-                : place.photo instanceof Blob
-                    ? [{ blob: place.photo, alt: `Foto de ${place.name}` }]
+            const photos = place.photo instanceof Blob
+                ? [{ blob: place.photo, alt: `Foto actualizada de ${place.name}` }]
+                : place.photos?.length
+                    ? place.photos
                     : [];
             photoStrip.dataset.photoCount = String(photos.length);
 
@@ -1194,6 +1212,50 @@ async function renderPlaces() {
                 note.textContent = place.note;
                 copy.append(note);
             }
+
+            const changePhotoButton = document.createElement('button');
+            changePhotoButton.className = 'place-change-photo-button';
+            changePhotoButton.type = 'button';
+            changePhotoButton.textContent = 'Cambiar foto';
+            changePhotoButton.setAttribute('aria-label', `Cambiar foto de ${place.name}`);
+            const changePhotoInput = document.createElement('input');
+            changePhotoInput.className = 'place-change-photo-input';
+            changePhotoInput.type = 'file';
+            changePhotoInput.accept = 'image/*';
+            changePhotoInput.hidden = true;
+            changePhotoInput.setAttribute('aria-label', `Elegir nueva foto para ${place.name}`);
+            changePhotoButton.addEventListener('click', () => changePhotoInput.click());
+            changePhotoInput.addEventListener('change', async () => {
+                const file = changePhotoInput.files?.[0];
+                if (!file) return;
+
+                changePhotoButton.disabled = true;
+                changePhotoButton.textContent = 'Guardando foto…';
+                try {
+                    const photo = await compressPlacePhoto(file);
+                    if (photo.size > MAX_SYNC_PLACE_PHOTO_BYTES) {
+                        throw new Error('La foto optimizada supera 2 MB. Elige una imagen más pequeña.');
+                    }
+                    await updatePlace({
+                        id: place.id,
+                        name: place.name,
+                        date: place.date || '',
+                        note: place.note || '',
+                        photo
+                    });
+                    await renderPlaces();
+                    scheduleCloudSync();
+                    showToast(`Foto de ${place.name} actualizada ♡`);
+                } catch (error) {
+                    console.error(`No se pudo cambiar la foto de ${place.name}:`, error);
+                    showToast(error.message || 'No se pudo guardar la nueva foto.');
+                    changePhotoButton.disabled = false;
+                    changePhotoButton.textContent = 'Cambiar foto';
+                } finally {
+                    changePhotoInput.value = '';
+                }
+            });
+            copy.append(changePhotoButton, changePhotoInput);
 
             if (!place.imported) {
                 const deleteButton = document.createElement('button');
