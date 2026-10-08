@@ -206,10 +206,14 @@ export function createSyncServer({
 
         try {
             if (request.method === 'GET') {
-                jsonResponse(response, 200, await stateTask, origin);
+                const current = await stateTask;
+                if (url.searchParams.get('metadata') === '1') {
+                    jsonResponse(response, 200, { revision: current.revision, updatedAt: current.updatedAt }, origin);
+                } else {
+                    jsonResponse(response, 200, current, origin);
+                }
                 return;
             }
-
             const body = await readRequestBody(request);
             if (!body || !Number.isSafeInteger(body.revision) || body.revision < 0 || !validateData(body.data)) {
                 jsonResponse(response, 400, { error: 'Invalid shared data' }, origin);

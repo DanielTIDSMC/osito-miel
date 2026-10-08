@@ -25,6 +25,7 @@ const DAILY_ANSWERS_KEY = 'osito-miel.daily-answers.v1';
 const ANNIVERSARY_KEY = 'osito-miel.special-date.v1';
 const CLOUD_CONFIG_KEY = 'osito-miel.sync-config.v1';
 const CLOUD_UPDATED_KEY = 'osito-miel.sync-updated-at.v1';
+const CLOUD_REVISION_KEY = 'osito-miel.sync-revision.v1';
 const DELETED_PLACES_KEY = 'osito-miel.deleted-places.v1';
 const PLACE_OVERRIDES_KEY = 'osito-miel.place-overrides.v1';
 const PLACES_DATABASE = 'osito-miel-places';
@@ -124,6 +125,7 @@ let placePhotoUrls = [];
 let cloudConfig = null;
 let cloudSyncTimer;
 let cloudSyncPromise = null;
+let cloudRevision = null;
 let archivedPlacesPromise;
 let lastNoteIndex = -1;
 let toastTimer;
@@ -650,6 +652,8 @@ function loadCloudConfig() {
         const saved = JSON.parse(localStorage.getItem(CLOUD_CONFIG_KEY) || 'null');
         if (saved && typeof saved.apiUrl === 'string' && typeof saved.password === 'string') {
             cloudConfig = { apiUrl: normalizeApiUrl(saved.apiUrl), password: saved.password };
+            cloudRevision = Number(localStorage.getItem(CLOUD_REVISION_KEY));
+            if (!Number.isSafeInteger(cloudRevision) || cloudRevision < 0) cloudRevision = null;
             syncApiUrlInput.value = cloudConfig.apiUrl;
             syncPasswordInput.value = cloudConfig.password;
             updateSyncControls();
@@ -875,6 +879,8 @@ async function syncSharedData() {
         const serializedData = JSON.stringify(mergedData);
         if (serializedData === JSON.stringify(remoteState.data)) {
             localStorage.setItem(CLOUD_UPDATED_KEY, remoteState.updatedAt || new Date().toISOString());
+            cloudRevision = remoteState.revision;
+            localStorage.setItem(CLOUD_REVISION_KEY, String(cloudRevision));
             setSyncStatus(`Todo está al día${remoteState.updatedAt ? ` · ${new Intl.DateTimeFormat('es-MX', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(remoteState.updatedAt))}` : ''}.`);
             syncStatus.dataset.state = 'connected';
             return;
@@ -890,6 +896,8 @@ async function syncSharedData() {
             continue;
         }
         localStorage.setItem(CLOUD_UPDATED_KEY, body.updatedAt);
+        cloudRevision = body.revision;
+        localStorage.setItem(CLOUD_REVISION_KEY, String(cloudRevision));
         setSyncStatus(`Todo está al día · ${new Intl.DateTimeFormat('es-MX', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(body.updatedAt))}.`);
         syncStatus.dataset.state = 'connected';
         return;
@@ -908,6 +916,17 @@ function runCloudSync() {
             cloudSyncPromise = null;
         });
     return cloudSyncPromise;
+}
+
+async function checkForCloudChanges() {
+    if (!cloudConfig || !navigator.onLine || document.hidden || cloudRevision === null) return;
+    try {
+        const { body } = await cloudRequest('/api/state?metadata=1');
+        if (Number.isSafeInteger(body.revision) && body.revision !== cloudRevision) await runCloudSync();
+    } catch (error) {
+        console.error('No se pudo revisar si hay cambios compartidos:', error);
+        setSyncStatus('No se pudieron consultar cambios. Se reintentara en breve.', 'error');
+    }
 }
 
 function scheduleCloudSync() {
@@ -971,6 +990,8 @@ syncDisconnectButton.addEventListener('click', () => {
     try {
         localStorage.removeItem(CLOUD_CONFIG_KEY);
         localStorage.removeItem(CLOUD_UPDATED_KEY);
+        localStorage.removeItem(CLOUD_REVISION_KEY);
+        cloudRevision = null;
         cloudConfig = null;
         updateSyncControls();
         setSyncStatus('Dispositivo desconectado. No se borró ningún recuerdo de este celular.');
@@ -989,6 +1010,8 @@ window.addEventListener('offline', () => {
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden && cloudConfig) void runCloudSync();
 });
+
+setInterval(() => void checkForCloudChanges(), 15_000);
 
 async function savePlace(place) {
     const database = await openPlacesDatabase();
