@@ -20,7 +20,13 @@
                 <span class="wordmark-icon" aria-hidden="true">♡</span>
                 <span>un poquito <b>de miel</b></span>
             </a>
-            <button id="install-button" class="install-button" type="button" hidden>Guardar en mi pantalla</button>
+            <div class="topbar-actions">
+                <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Activar modo oscuro" aria-pressed="false">
+                    <span id="theme-icon" aria-hidden="true">☾</span>
+                    <span id="theme-label">Modo oscuro</span>
+                </button>
+                <button id="install-button" class="install-button" type="button" hidden>Guardar en mi pantalla</button>
+            </div>
         </header>
 
         <section class="hero" aria-labelledby="greeting">
@@ -100,6 +106,142 @@
                     <p>Donde sea que estés tú, ahí quiero estar yo.</p>
                 </article>
             </div>
+        </section>
+
+        <section class="date-plans" aria-labelledby="date-plans-title">
+            <div class="section-label date-plans-heading">
+                <span class="section-icon" aria-hidden="true">✦</span>
+                <div>
+                    <p class="eyebrow">IDEAS PARA NUESTRO PRÓXIMO RECUERDO</p>
+                    <h2 id="date-plans-title">Citas para hacer juntitos</h2>
+                </div>
+                <button id="random-date-button" class="random-date-button" type="button">Sorpréndeme ↗</button>
+            </div>
+            <div id="date-filters" class="date-filters" role="group" aria-label="Filtrar ideas de citas">
+                <button class="filter-button is-active" type="button" data-filter="Todas" aria-pressed="true">Todas</button>
+                <button class="filter-button" type="button" data-filter="Aire libre" aria-pressed="false">Aire libre</button>
+                <button class="filter-button" type="button" data-filter="Comida" aria-pressed="false">Comida</button>
+                <button class="filter-button" type="button" data-filter="En casa" aria-pressed="false">En casa</button>
+                <button class="filter-button" type="button" data-filter="Creativo" aria-pressed="false">Creativas</button>
+                <button class="filter-button" type="button" data-filter="Aventura" aria-pressed="false">Aventura</button>
+                <button class="filter-button" type="button" data-filter="Guardadas" aria-pressed="false">♡ Guardadas</button>
+                <button class="filter-button" type="button" data-filter="Hechas" aria-pressed="false">Ya las hicimos</button>
+            </div>
+            <p id="date-progress" class="date-progress" aria-live="polite"></p>
+            <p id="date-pick-status" class="date-pick-status" role="status" aria-live="polite"></p>
+            <div id="date-grid" class="date-grid"></div>
+            <form id="custom-date-form" class="custom-date-form">
+                <label class="sr-only" for="custom-date-title">Agregar una idea de cita</label>
+                <input id="custom-date-title" type="text" maxlength="60" placeholder="Agrega una idea de ustedes..." required>
+                <label class="sr-only" for="custom-date-category">Categoría de la idea</label>
+                <select id="custom-date-category">
+                    <option>Aire libre</option>
+                    <option>Comida</option>
+                    <option>En casa</option>
+                    <option>Creativo</option>
+                    <option>Aventura</option>
+                </select>
+                <button class="add-date-button" type="submit">＋ Agregar plan</button>
+            </form>
+        </section>
+
+        <section class="places-section" aria-labelledby="places-title">
+            <div class="section-label">
+                <span class="section-icon memory-icon" aria-hidden="true">⌖</span>
+                <div>
+                    <p class="eyebrow">PEDACITOS DE NUESTRAS SALIDAS</p>
+                    <h2 id="places-title">Lugares que ya visitamos</h2>
+                </div>
+            </div>
+            <p id="places-count" class="places-count">Su álbum de aventuras aparecerá aquí.</p>
+            <div id="places-grid" class="places-grid"></div>
+            <p id="places-empty" class="places-empty">
+                Todavía no hay lugares guardados. Agreguen el primero con una foto bonita ♡
+            </p>
+            <div id="place-suggestions" class="place-suggestions" hidden>
+                <p>Encontré estos lugares en el chat. Elijan uno, revisen su fecha y agreguen la foto:</p>
+                <div id="place-suggestion-list" class="place-suggestion-list"></div>
+            </div>
+            <form id="place-form" class="place-form">
+                <div class="place-field">
+                    <label for="place-name">¿A dónde fueron?</label>
+                    <input id="place-name" type="text" maxlength="70" placeholder="Nombre del lugar" required>
+                </div>
+                <div class="place-field">
+                    <label for="place-date">¿Cuándo fueron?</label>
+                    <input id="place-date" type="date" required>
+                </div>
+                <div class="place-field place-photo-field">
+                    <label for="place-photo">Agrega una foto</label>
+                    <input id="place-photo" type="file" accept="image/*" required>
+                </div>
+                <img id="place-photo-preview" class="place-photo-preview" alt="Vista previa de la foto elegida" hidden>
+                <div class="place-field place-note-field">
+                    <label for="place-note">Un detalle de ese día (opcional)</label>
+                    <textarea id="place-note" maxlength="240" rows="2" placeholder="¿Qué fue lo más bonito de esa salida?"></textarea>
+                </div>
+                <button class="add-date-button" type="submit">Guardar en nuestros lugares ♡</button>
+            </form>
+            <p class="places-privacy-note">Las fotos se guardan en este dispositivo y también estarán disponibles sin conexión.</p>
+        </section>
+
+        <section class="couple-question-section" aria-labelledby="couple-question-title">
+            <div class="section-label">
+                <span class="section-icon memory-icon" aria-hidden="true">?</span>
+                <div>
+                    <p class="eyebrow">UN RATITO PARA CONOCERNOS MÁS</p>
+                    <h2 id="couple-question-title">La pregunta de hoy</h2>
+                </div>
+            </div>
+            <p id="daily-question" class="daily-question"></p>
+            <form id="daily-question-form" class="daily-question-form">
+                <label for="first-answer">Tu respuesta</label>
+                <textarea id="first-answer" maxlength="240" rows="2" placeholder="Cuéntale..." aria-label="Tu respuesta a la pregunta de hoy"></textarea>
+                <label for="second-answer">Su respuesta</label>
+                <textarea id="second-answer" maxlength="240" rows="2" placeholder="Ahora le toca..." aria-label="La respuesta de tu pareja a la pregunta de hoy"></textarea>
+                <button class="add-date-button" type="submit">Guardar respuestas ♡</button>
+            </form>
+            <p id="daily-question-status" class="daily-question-status" role="status" aria-live="polite">
+                La pregunta cambia cada día. Las respuestas se guardan solo en este dispositivo.
+            </p>
+            <div id="daily-history" class="daily-history" aria-label="Preguntas y respuestas anteriores"></div>
+        </section>
+
+        <section class="anniversary-section" aria-labelledby="anniversary-title">
+            <div class="section-label">
+                <span class="section-icon" aria-hidden="true">♡</span>
+                <div>
+                    <p class="eyebrow">UNA FECHA SOLO DE USTEDES</p>
+                    <h2 id="anniversary-title">Nuestro día especial</h2>
+                </div>
+            </div>
+            <form id="anniversary-form" class="anniversary-form">
+                <label class="sr-only" for="anniversary-date">Fecha especial de ustedes</label>
+                <input id="anniversary-date" type="date" required>
+                <button class="add-date-button" type="submit">Guardar fecha</button>
+            </form>
+            <p id="anniversary-status" class="anniversary-status" role="status" aria-live="polite">
+                Guarda su fecha y aquí verán cuánto falta para celebrarla.
+            </p>
+        </section>
+
+        <section class="reminder-section" aria-labelledby="reminder-title">
+            <div class="section-label">
+                <span class="section-icon" aria-hidden="true">♡</span>
+                <div>
+                    <p class="eyebrow">UN ABRACITO A TU HORA</p>
+                    <h2 id="reminder-title">Que no se te olvide cuánto te quiero</h2>
+                </div>
+            </div>
+            <form id="reminder-form" class="reminder-form">
+                <label class="sr-only" for="reminder-time">Hora del recordatorio diario</label>
+                <input id="reminder-time" type="time" value="20:00" required>
+                <button class="reminder-button" type="submit">Activar recordatorio</button>
+                <button id="reminder-cancel" class="reminder-cancel" type="button" hidden>Desactivar</button>
+            </form>
+            <p id="reminder-status" class="reminder-status" role="status" aria-live="polite">
+                Recibe una notita diaria. Para que llegue, deja esta página abierta.
+            </p>
         </section>
 
         <section class="memory-section" aria-labelledby="memory-title">

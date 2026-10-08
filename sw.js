@@ -1,4 +1,4 @@
-const CACHE_NAME = 'osito-miel-shell-v1';
+const CACHE_NAME = 'osito-miel-shell-v9';
 const APP_SHELL = [
     './',
     './index.html',
@@ -58,5 +58,18 @@ self.addEventListener('fetch', (event) => {
                 return response;
             });
         })
+    );
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const targetUrl = event.notification.data?.url || './';
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then((clients) => {
+                const existingClient = clients.find((client) => client.url === targetUrl);
+                if (existingClient) return existingClient.focus();
+                return self.clients.openWindow(targetUrl);
+            })
     );
 });
