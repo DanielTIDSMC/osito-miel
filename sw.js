@@ -1,12 +1,12 @@
-const CACHE_NAME = 'osito-miel-shell-v21';
+const CACHE_NAME = 'osito-miel-shell-v22';
 const APP_SHELL = [
     './',
     './index.html',
-    './styles.css?v=ae1c1a8',
-    './app.js?v=ae1c1a8',
+    './styles.css?v=ratings-v1',
+    './app.js?v=ratings-v1',
     './manifest.json',
     './assets/icons/icon.svg',
-    './assets/places/visited.json?v=8ec0d05',
+    './assets/places/visited.json?v=ratings-v1',
     './assets/places/puerquito-valiente.jpg',
     './assets/places/senor-bamboo.jpg',
     './assets/places/picnic-1.jpg',

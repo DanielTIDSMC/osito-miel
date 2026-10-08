@@ -28,6 +28,7 @@ const CLOUD_UPDATED_KEY = 'osito-miel.sync-updated-at.v1';
 const CLOUD_REVISION_KEY = 'osito-miel.sync-revision.v1';
 const DELETED_PLACES_KEY = 'osito-miel.deleted-places.v1';
 const PLACE_OVERRIDES_KEY = 'osito-miel.place-overrides.v1';
+const PLACE_RATINGS_KEY = 'osito-miel.place-ratings.v1';
 const PLACES_DATABASE = 'osito-miel-places';
 const PLACES_STORE = 'places';
 const MAX_SYNC_PLACE_PHOTO_BYTES = 2 * 1024 * 1024;
@@ -275,6 +276,24 @@ function savePlaceOverrides(overrides) {
         console.error('No se pudieron guardar las fechas actualizadas:', error);
         throw error;
     }
+}
+
+function loadPlaceRatings() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(PLACE_RATINGS_KEY) || '{}');
+        if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return {};
+        return Object.fromEntries(Object.entries(saved).filter(([, entry]) =>
+            entry && typeof entry === 'object' && !Array.isArray(entry) &&
+            entry.ratings && typeof entry.ratings === 'object' && !Array.isArray(entry.ratings)
+        ));
+    } catch (error) {
+        console.error('No se pudieron cargar las calificaciones guardadas:', error);
+        return {};
+    }
+}
+
+function savePlaceRatings(ratings) {
+    localStorage.setItem(PLACE_RATINGS_KEY, JSON.stringify(ratings));
 }
 
 function getLocalDateKey(date = new Date()) {
@@ -740,6 +759,7 @@ async function getLocalSharedData() {
     const places = await getPlaces();
     const deletedPlaceIds = loadStoredList(DELETED_PLACES_KEY, (id) => typeof id === 'string');
     const placeOverrides = loadPlaceOverrides();
+    const placeRatings = loadPlaceRatings();
     const activePlaces = places.filter((place) =>
         place && typeof place === 'object' && typeof place.id === 'string' &&
         !deletedPlaceIds.includes(place.id)
@@ -764,6 +784,7 @@ async function getLocalSharedData() {
         anniversary: anniversaryDateInput.value,
         deletedPlaceIds,
         placeOverrides,
+        placeRatings,
         places: await Promise.all(activePlaces.map(async (place) => ({
             id: place.id,
             name: place.name,
@@ -818,6 +839,20 @@ function mergeSharedData(local, remote, remoteUpdatedAt) {
         ...(remote.deletedPlaceIds || [])
     ])];
     const mergedOverrides = { ...(remote.placeOverrides || {}), ...(local.placeOverrides || {}) };
+    const mergedPlaceRatings = {};
+    const ratingIds = new Set([
+        ...Object.keys(local.placeRatings || {}),
+        ...Object.keys(remote.placeRatings || {})
+    ]);
+    ratingIds.forEach((id) => {
+        const localRating = local.placeRatings?.[id];
+        const remoteRating = remote.placeRatings?.[id];
+        if (localRating && remoteRating) {
+            mergedPlaceRatings[id] = localRating.updatedAt >= remoteRating.updatedAt ? localRating : remoteRating;
+        } else {
+            mergedPlaceRatings[id] = localRating || remoteRating;
+        }
+    });
 
     return {
         memories: mergeEntries(local.memories, remote.memories || [], (entry) => `${entry.date}\0${entry.text}`)
@@ -836,6 +871,7 @@ function mergeSharedData(local, remote, remoteUpdatedAt) {
         anniversary: localIsNewer ? (local.anniversary || remote.anniversary || '') : (remote.anniversary || local.anniversary || ''),
         deletedPlaceIds,
         placeOverrides: mergedOverrides,
+        placeRatings: mergedPlaceRatings,
         places: mergeEntries(
             localIsNewer ? (remote.places || []) : local.places,
             localIsNewer ? local.places : (remote.places || []),
@@ -855,6 +891,7 @@ async function saveLocalSharedData(data) {
     localStorage.setItem(DAILY_ANSWERS_KEY, JSON.stringify(data.dailyAnswers));
     localStorage.setItem(DELETED_PLACES_KEY, JSON.stringify(data.deletedPlaceIds || []));
     savePlaceOverrides(data.placeOverrides || {});
+    savePlaceRatings(data.placeRatings || {});
     if (data.anniversary) localStorage.setItem(ANNIVERSARY_KEY, data.anniversary);
     else localStorage.removeItem(ANNIVERSARY_KEY);
 
@@ -1196,7 +1233,7 @@ async function renderPlaces() {
 
     try {
         if (!archivedPlacesPromise) {
-            archivedPlacesPromise = fetch('./assets/places/visited.json?v=8ec0d05')
+            archivedPlacesPromise = fetch('./assets/places/visited.json?v=ratings-v1')
                 .then((response) => {
                     if (!response.ok) throw new Error(`No se pudieron cargar los lugares del chat (${response.status}).`);
                     return response.json();
@@ -1223,6 +1260,7 @@ async function renderPlaces() {
         const [savedPlaces, archivedPlaces] = await Promise.all([getPlaces(), archivedPlacesPromise]);
         const deletedPlaceIds = loadStoredList(DELETED_PLACES_KEY, (id) => typeof id === 'string');
         const placeOverrides = loadPlaceOverrides();
+        const savedPlaceRatings = loadPlaceRatings();
 
         // 1. Crear un mapa para fusionar lugares sin duplicar por ID
         const placesMap = new Map();
@@ -1233,7 +1271,8 @@ async function renderPlaces() {
                 const overrideDate = placeOverrides[place.id];
                 placesMap.set(place.id, {
                     ...place,
-                    date: overrideDate !== undefined ? overrideDate : place.date
+                    date: overrideDate !== undefined ? overrideDate : place.date,
+                    ratings: { ...(place.ratings || {}), ...(savedPlaceRatings[place.id]?.ratings || {}) }
                 });
             }
         });
@@ -1346,31 +1385,60 @@ async function renderPlaces() {
                 copy.append(note);
             }
 
-            if (place.ratings) {
-                const ratingList = document.createElement('dl');
-                ratingList.className = 'place-card-ratings';
-                ratingList.setAttribute('aria-label', `Calificaciones de ${place.name}`);
-                const categories = [
-                    ['precios', 'Precios'],
-                    ['sabor', 'Sabor'],
-                    ['atencion', 'Atenci\u00f3n'],
-                    ['menu', 'Men\u00fa']
-                ];
-                categories.forEach(([key, label]) => {
-                    const score = place.ratings[key];
-                    const item = document.createElement('div');
-                    item.className = 'place-card-rating';
-                    const term = document.createElement('dt');
-                    term.textContent = label;
-                    const value = document.createElement('dd');
-                    value.className = 'place-card-rating-value';
-                    value.setAttribute('aria-label', `${label}: ${score} de 5 estrellas`);
-                    value.innerHTML = `<span class="place-rating-stars" aria-hidden="true">${'\u2605'.repeat(score)}${'\u2606'.repeat(5 - score)}</span><span>${score}/5</span>`;
-                    item.append(term, value);
-                    ratingList.append(item);
-                });
-                copy.append(ratingList);
-            }
+            const ratingList = document.createElement('dl');
+            ratingList.className = 'place-card-ratings';
+            ratingList.setAttribute('aria-label', `Calificaciones de ${place.name}`);
+            const categories = [
+                ['precios', 'Precios'],
+                ['sabor', 'Sabor'],
+                ['atencion', 'Atenci\u00f3n'],
+                ['menu', 'Men\u00fa']
+            ];
+            categories.forEach(([key, label]) => {
+                const score = place.ratings?.[key] || 0;
+                const item = document.createElement('div');
+                item.className = 'place-card-rating';
+                const term = document.createElement('dt');
+                term.textContent = label;
+                const value = document.createElement('dd');
+                value.className = 'place-card-rating-value';
+                const stars = document.createElement('span');
+                stars.className = 'place-rating-stars';
+                stars.setAttribute('role', 'group');
+                stars.setAttribute('aria-label', `${label}, calificaci\u00f3n de 1 a 5 estrellas`);
+                for (let star = 1; star <= 5; star += 1) {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'place-rating-star';
+                    button.textContent = star <= score ? '\u2605' : '\u2606';
+                    button.setAttribute('aria-label', `${label}: ${star} de 5 estrellas`);
+                    button.setAttribute('aria-pressed', String(star === score));
+                    button.addEventListener('click', async () => {
+                        try {
+                            const currentRatings = loadPlaceRatings();
+                            const savedEntry = currentRatings[place.id] || { ratings: {} };
+                            currentRatings[place.id] = {
+                                ratings: { ...(place.ratings || {}), ...(savedEntry.ratings || {}), [key]: star },
+                                updatedAt: new Date().toISOString()
+                            };
+                            savePlaceRatings(currentRatings);
+                            await renderPlaces();
+                            scheduleCloudSync();
+                            showToast(`Calificaste ${place.name}: ${label.toLowerCase()} ${star}/5`);
+                        } catch (error) {
+                            showPlaceFormError('No se pudo guardar la calificaci\u00f3n:', error);
+                        }
+                    });
+                    stars.append(button);
+                }
+                const scoreText = document.createElement('span');
+                scoreText.className = 'place-rating-score';
+                scoreText.textContent = score ? `${score}/5` : '\u2014/5';
+                value.append(stars, scoreText);
+                item.append(term, value);
+                ratingList.append(item);
+            });
+            copy.append(ratingList);
 
             const changePhotoButton = document.createElement('button');
             changePhotoButton.className = 'place-change-photo-button';

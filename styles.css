@@ -266,7 +266,11 @@ h1 span { color: var(--honey-dark); font-style: italic; }
 .place-card-rating { display: flex; align-items: center; justify-content: space-between; gap: 5px; min-width: 0; font-size: 9px; }
 .place-card-rating dt { color: var(--soft-ink); }
 .place-card-rating dd { display: flex; align-items: center; gap: 3px; margin: 0; white-space: nowrap; }
-.place-rating-stars { color: var(--honey-dark); letter-spacing: -1px; font-size: 10px; }
+.place-rating-stars { display: inline-flex; align-items: center; color: var(--honey-dark); letter-spacing: -1px; font-size: 10px; }
+.place-rating-star { padding: 0; border: 0; background: transparent; color: var(--honey-dark); cursor: pointer; font-size: 12px; line-height: 1; }
+.place-rating-star:hover { transform: scale(1.12); }
+.place-rating-star:focus-visible { border-radius: 2px; outline: 2px solid var(--honey-dark); outline-offset: 1px; }
+.place-rating-score { color: var(--soft-ink); font-size: 8px; }
 .place-change-photo-button { margin-top: 10px; padding: 7px 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--surface-honey); color: var(--honey-dark); cursor: pointer; font-size: 9px; font-weight: 700; }
 .place-change-photo-button:hover { border-color: var(--honey); }
 .place-change-photo-button:disabled { cursor: wait; opacity: .7; }

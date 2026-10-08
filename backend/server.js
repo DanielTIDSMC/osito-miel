@@ -19,6 +19,7 @@ const ALLOWED_DATA_KEYS = new Set([
     'places',
     'deletedPlaceIds',
     'placeOverrides',
+    'placeRatings',
     'dateStates'
 ]);
 
@@ -61,6 +62,20 @@ function validateData(data) {
             !id || id.length > 200 || typeof date !== 'string' ||
             !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
             new Date(`${date}T00:00:00.000Z`).toISOString().slice(0, 10) !== date
+        )
+    )) return false;
+
+    if (data.placeRatings !== undefined && (
+        !data.placeRatings || typeof data.placeRatings !== 'object' || Array.isArray(data.placeRatings) ||
+        Object.keys(data.placeRatings).length > 1000 ||
+        Object.entries(data.placeRatings).some(([id, entry]) =>
+            !id || id.length > 200 || !entry || typeof entry !== 'object' || Array.isArray(entry) ||
+            !entry.ratings || typeof entry.ratings !== 'object' || Array.isArray(entry.ratings) ||
+            Object.keys(entry.ratings).length < 1 || Object.keys(entry.ratings).length > 4 ||
+            Object.entries(entry.ratings).some(([category, score]) =>
+                !['precios', 'sabor', 'atencion', 'menu'].includes(category) ||
+                !Number.isInteger(score) || score < 1 || score > 5
+            ) || typeof entry.updatedAt !== 'string' || !Number.isFinite(Date.parse(entry.updatedAt))
         )
     )) return false;
 
@@ -126,6 +141,7 @@ async function loadState(filePath) {
                     places: [],
                     deletedPlaceIds: [],
                     placeOverrides: {},
+                    placeRatings: {},
                     dateStates: {}
                 }
             };
