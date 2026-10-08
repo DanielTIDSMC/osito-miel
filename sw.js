@@ -1,4 +1,4 @@
-const CACHE_NAME = 'osito-miel-shell-v20';
+const CACHE_NAME = 'osito-miel-shell-v21';
 const APP_SHELL = [
     './',
     './index.html',
@@ -6,7 +6,7 @@ const APP_SHELL = [
     './app.js?v=ae1c1a8',
     './manifest.json',
     './assets/icons/icon.svg',
-    './assets/places/visited.json',
+    './assets/places/visited.json?v=8ec0d05',
     './assets/places/puerquito-valiente.jpg',
     './assets/places/senor-bamboo.jpg',
     './assets/places/picnic-1.jpg',

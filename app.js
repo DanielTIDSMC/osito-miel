@@ -1196,7 +1196,7 @@ async function renderPlaces() {
 
     try {
         if (!archivedPlacesPromise) {
-            archivedPlacesPromise = fetch('./assets/places/visited.json')
+            archivedPlacesPromise = fetch('./assets/places/visited.json?v=8ec0d05')
                 .then((response) => {
                     if (!response.ok) throw new Error(`No se pudieron cargar los lugares del chat (${response.status}).`);
                     return response.json();
