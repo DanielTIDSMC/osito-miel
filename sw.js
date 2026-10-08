@@ -1,11 +1,37 @@
-const CACHE_NAME = 'osito-miel-shell-v9';
+const CACHE_NAME = 'osito-miel-shell-v10';
 const APP_SHELL = [
     './',
     './index.html',
     './styles.css',
     './app.js',
     './manifest.json',
-    './assets/icons/icon.svg'
+    './assets/icons/icon.svg',
+    './assets/places/visited.json',
+    './assets/places/puerquito-valiente.jpg',
+    './assets/places/senor-bamboo.jpg',
+    './assets/places/picnic-1.jpg',
+    './assets/places/picnic-2.jpg',
+    './assets/places/picnic-3.jpg',
+    './assets/places/picnic-4.jpg',
+    './assets/places/pizza-angelotti.jpg',
+    './assets/places/papaluchon-1.jpg',
+    './assets/places/papaluchon-2.jpg',
+    './assets/places/papaluchon-3.jpg',
+    './assets/places/papaluchon-4.jpg',
+    './assets/places/papaluchon-5.jpg',
+    './assets/places/papaluchon-6.jpg',
+    './assets/places/triangulos-1.jpg',
+    './assets/places/triangulos-2.jpg',
+    './assets/places/triangulos-3.jpg',
+    './assets/places/granel-mas.jpg',
+    './assets/places/restaurante-601.jpg',
+    './assets/places/madisson-grill.jpg',
+    './assets/places/cafe-country.jpg',
+    './assets/places/comida-japonesa.jpg',
+    './assets/places/cafe-ripoll-1.jpg',
+    './assets/places/cafe-ripoll-2.jpg',
+    './assets/places/cafe-ripoll-3.jpg',
+    './assets/places/cafe-ripoll-4.jpg'
 ];
 
 self.addEventListener('install', (event) => {

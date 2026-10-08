@@ -182,7 +182,10 @@
                 </div>
                 <button class="add-date-button" type="submit">Guardar en nuestros lugares ♡</button>
             </form>
-            <p class="places-privacy-note">Las fotos se guardan en este dispositivo y también estarán disponibles sin conexión.</p>
+            <p class="places-privacy-note">
+                Las fotos precargadas forman parte del sitio público de GitHub Pages; cualquiera que tenga su enlace podría verlas.
+                Las fotos nuevas se guardan en este dispositivo y solo se comparten al conectar la sincronización privada.
+            </p>
         </section>
 
         <section class="couple-question-section" aria-labelledby="couple-question-title">
@@ -241,6 +244,44 @@
             </form>
             <p id="reminder-status" class="reminder-status" role="status" aria-live="polite">
                 Recibe una notita diaria. Para que llegue, deja esta página abierta.
+            </p>
+        </section>
+
+        <section class="sync-section" aria-labelledby="sync-title">
+            <div class="section-label">
+                <span class="section-icon" aria-hidden="true">⇄</span>
+                <div>
+                    <p class="eyebrow">EL MISMO RINCONCITO EN DOS CELULARES</p>
+                    <h2 id="sync-title">Compartir nuestros recuerdos</h2>
+                </div>
+            </div>
+            <p class="sync-description">
+                Conecten el servicio privado de Railway y usen la misma clave en ambos celulares.
+                Sus recuerdos, respuestas, planes y fotos se sincronizarán cuando haya internet.
+            </p>
+            <form id="sync-form" class="sync-form">
+                <div class="sync-field">
+                    <label for="sync-api-url">Dirección del servicio de sincronización</label>
+                    <input id="sync-api-url" type="url" inputmode="url" autocomplete="url"
+                        placeholder="https://su-servicio.up.railway.app" required>
+                </div>
+                <div class="sync-field">
+                    <label for="sync-room-password">Clave compartida de ustedes</label>
+                    <input id="sync-room-password" type="password" autocomplete="current-password"
+                        placeholder="Peguen la misma clave en ambos celulares" required minlength="24">
+                </div>
+                <div class="sync-actions">
+                    <button id="sync-connect-button" class="add-date-button" type="submit">Conectar y sincronizar</button>
+                    <button id="sync-now-button" class="sync-secondary-button" type="button" hidden>Sincronizar ahora</button>
+                    <button id="sync-disconnect-button" class="sync-secondary-button" type="button" hidden>Desconectar este dispositivo</button>
+                </div>
+            </form>
+            <p id="sync-status" class="sync-status" role="status" aria-live="polite">
+                Por ahora, los datos permanecen solo en este dispositivo. La clave no se publica en la página.
+            </p>
+            <p class="sync-privacy-note">
+                Usen una clave larga y privada. Los datos viajan por HTTPS y Railway guarda la copia en su almacenamiento;
+                la clave se conserva solo en cada navegador que conecten. El modo sin conexión sigue disponible.
             </p>
         </section>
 

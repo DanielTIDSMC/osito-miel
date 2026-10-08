@@ -20,8 +20,12 @@ const DATE_IDEAS_KEY = 'osito-miel.date-ideas.v1';
 const SAVED_DATES_KEY = 'osito-miel.saved-dates.v1';
 const PICKED_DATE_KEY = 'osito-miel.next-date.v1';
 const COMPLETED_DATES_KEY = 'osito-miel.completed-dates.v1';
+const DATE_STATES_KEY = 'osito-miel.date-states.v1';
 const DAILY_ANSWERS_KEY = 'osito-miel.daily-answers.v1';
 const ANNIVERSARY_KEY = 'osito-miel.special-date.v1';
+const CLOUD_CONFIG_KEY = 'osito-miel.sync-config.v1';
+const CLOUD_UPDATED_KEY = 'osito-miel.sync-updated-at.v1';
+const DELETED_PLACES_KEY = 'osito-miel.deleted-places.v1';
 const PLACES_DATABASE = 'osito-miel-places';
 const PLACES_STORE = 'places';
 const DATE_IDEAS = [
@@ -97,11 +101,22 @@ const placesCount = document.querySelector('#places-count');
 const placesEmpty = document.querySelector('#places-empty');
 const placeSuggestions = document.querySelector('#place-suggestions');
 const placeSuggestionList = document.querySelector('#place-suggestion-list');
+const syncForm = document.querySelector('#sync-form');
+const syncApiUrlInput = document.querySelector('#sync-api-url');
+const syncPasswordInput = document.querySelector('#sync-room-password');
+const syncStatus = document.querySelector('#sync-status');
+const syncConnectButton = document.querySelector('#sync-connect-button');
+const syncNowButton = document.querySelector('#sync-now-button');
+const syncDisconnectButton = document.querySelector('#sync-disconnect-button');
 let activeDateFilter = 'Todas';
 let pickedDateId = null;
 let placesDatabasePromise;
 let previewPhotoUrl;
 let placePhotoUrls = [];
+let cloudConfig = null;
+let cloudSyncTimer;
+let cloudSyncPromise = null;
+let archivedPlacesPromise;
 let lastNoteIndex = -1;
 let toastTimer;
 let installPrompt;
@@ -233,6 +248,36 @@ function getLocalDateKey(date = new Date()) {
     return `${year}-${month}-${day}`;
 }
 
+function loadDateStates() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(DATE_STATES_KEY) || '{}');
+        if (!saved || typeof saved !== 'object' || Array.isArray(saved)) {
+            throw new Error('El formato de cambios de planes no es válido.');
+        }
+        return Object.fromEntries(Object.entries(saved).filter(([, state]) =>
+            state && typeof state.saved === 'boolean' && typeof state.completed === 'boolean' &&
+            typeof state.updatedAt === 'string'
+        ));
+    } catch (error) {
+        console.error('No se pudieron cargar los cambios guardados en planes:', error);
+        showToast('No se pudieron recuperar algunos cambios de planes en este dispositivo.');
+        return {};
+    }
+}
+
+function recordDateState(id, update) {
+    const previous = dateStates[id] || { saved: false, completed: false, updatedAt: '' };
+    const next = { ...previous, ...update, updatedAt: new Date().toISOString() };
+    try {
+        dateStates = { ...dateStates, [id]: next };
+        localStorage.setItem(DATE_STATES_KEY, JSON.stringify(dateStates));
+        localStorage.setItem(CLOUD_UPDATED_KEY, next.updatedAt);
+    } catch (error) {
+        console.error('No se pudo registrar el cambio del plan:', error);
+        showToast('El cambio se aplicó aquí, pero no se pudo preparar para sincronizar.');
+    }
+}
+
 let customDates = loadStoredList(
     DATE_IDEAS_KEY,
     (idea) => idea && typeof idea.id === 'string' && typeof idea.title === 'string' &&
@@ -241,6 +286,7 @@ let customDates = loadStoredList(
 );
 let savedDateIds = loadStoredList(SAVED_DATES_KEY, (id) => typeof id === 'string');
 let completedDateIds = loadStoredList(COMPLETED_DATES_KEY, (id) => typeof id === 'string');
+let dateStates = loadDateStates();
 let dailyAnswers = loadStoredList(
     DAILY_ANSWERS_KEY,
     (entry) => entry && /^\d{4}-\d{2}-\d{2}$/.test(entry.date) &&
@@ -354,7 +400,9 @@ function toggleSavedDate(id) {
         return;
     }
     savedDateIds = nextSavedDates;
+    recordDateState(id, { saved: nextSavedDates.includes(id) });
     renderDates();
+    scheduleCloudSync();
 }
 
 function toggleCompletedDate(id) {
@@ -369,7 +417,9 @@ function toggleCompletedDate(id) {
         return;
     }
     completedDateIds = nextCompletedDates;
+    recordDateState(id, { completed: nextCompletedDates.includes(id) });
     renderDates();
+    scheduleCloudSync();
     showToast(completedDateIds.includes(id) ? '¡Un plan más para recordar! ♡' : 'Plan regresado a su lista pendiente.');
 }
 
@@ -384,6 +434,7 @@ function pickDate(idea) {
     pickedDateId = idea.id;
     datePickStatus.textContent = `Plan elegido: ${idea.title}. ¡Ya tienen una próxima cita pendiente!`;
     renderDates();
+    scheduleCloudSync();
 }
 
 function pickRandomDate() {
@@ -540,6 +591,355 @@ async function getPlaces() {
     });
 }
 
+function setSyncStatus(message, state = '') {
+    syncStatus.textContent = message;
+    if (state) syncStatus.dataset.state = state;
+    else delete syncStatus.dataset.state;
+}
+
+function normalizeApiUrl(value) {
+    const url = new URL(value);
+    const isLocalHttp = ['localhost', '127.0.0.1'].includes(url.hostname) && url.protocol === 'http:';
+    if (url.protocol !== 'https:' && !isLocalHttp) {
+        throw new Error('La dirección del servicio debe usar HTTPS.');
+    }
+    if (url.username || url.password || url.search || url.hash || (url.pathname !== '/' && url.pathname !== '')) {
+        throw new Error('Pega solo la dirección base del servicio, sin rutas ni parámetros.');
+    }
+    return url.origin;
+}
+
+function updateSyncControls() {
+    syncNowButton.hidden = !cloudConfig;
+    syncDisconnectButton.hidden = !cloudConfig;
+    syncConnectButton.textContent = cloudConfig ? 'Guardar conexión y sincronizar' : 'Conectar y sincronizar';
+}
+
+function loadCloudConfig() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(CLOUD_CONFIG_KEY) || 'null');
+        if (saved && typeof saved.apiUrl === 'string' && typeof saved.password === 'string') {
+            cloudConfig = { apiUrl: normalizeApiUrl(saved.apiUrl), password: saved.password };
+            syncApiUrlInput.value = cloudConfig.apiUrl;
+            syncPasswordInput.value = cloudConfig.password;
+            updateSyncControls();
+            if (navigator.onLine) {
+                void runCloudSync();
+            } else {
+                setSyncStatus('Sin conexión. Sus cambios siguen guardados aquí y se sincronizarán al volver a estar en línea.');
+            }
+        }
+    } catch (error) {
+        console.error('No se pudo recuperar la conexión compartida:', error);
+        setSyncStatus('No se pudo leer la conexión guardada. Vuelve a introducir la dirección y la clave.', 'error');
+    }
+}
+
+function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error('No se pudo preparar una foto para sincronizar.'));
+        reader.readAsDataURL(blob);
+    });
+}
+
+function dataUrlToBlob(dataUrl) {
+    const match = /^data:image\/jpeg;base64,([A-Za-z0-9+/]*={0,2})$/.exec(dataUrl);
+    if (!match) throw new Error('El servicio devolvió una foto con formato inválido.');
+    const binary = atob(match[1]);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return new Blob([bytes], { type: 'image/jpeg' });
+}
+
+async function getLocalSharedData() {
+    const places = await getPlaces();
+    const deletedPlaceIds = loadStoredList(DELETED_PLACES_KEY, (id) => typeof id === 'string');
+    const activePlaces = places.filter((place) => !deletedPlaceIds.includes(place.id));
+    const totalPhotoBytes = activePlaces.reduce((total, place) => total + place.photo.size, 0);
+    if (activePlaces.some((place) => place.photo.size > 2 * 1024 * 1024) || totalPhotoBytes > 7 * 1024 * 1024) {
+        throw new Error('Las fotos superan el límite seguro para sincronizar. Reduce su tamaño o sincroniza menos fotos a la vez.');
+    }
+    return {
+        memories,
+        dateIdeas: customDates,
+        savedDateIds,
+        pickedDateId,
+        completedDateIds,
+        dateStates,
+        dailyAnswers,
+        anniversary: anniversaryDateInput.value,
+        deletedPlaceIds,
+        places: await Promise.all(activePlaces.map(async (place) => ({
+            id: place.id,
+            name: place.name,
+            date: place.date,
+            note: place.note,
+            photo: await blobToDataUrl(place.photo)
+        })))
+    };
+}
+
+function mergeEntries(first, second, getKey) {
+    const entries = new Map();
+    [...first, ...second].forEach((entry) => entries.set(getKey(entry), entry));
+    return [...entries.values()];
+}
+
+function mergeSharedData(local, remote, remoteUpdatedAt) {
+    let localUpdatedAt = '';
+    try {
+        localUpdatedAt = localStorage.getItem(CLOUD_UPDATED_KEY) || '';
+    } catch (error) {
+        console.error('No se pudo leer la fecha de sincronización local:', error);
+    }
+    const localIsNewer = Boolean(localUpdatedAt && (!remoteUpdatedAt || localUpdatedAt > remoteUpdatedAt));
+    const dateStates = {};
+    const dateStateIds = new Set([
+        ...local.savedDateIds,
+        ...local.completedDateIds,
+        ...(remote.savedDateIds || []),
+        ...(remote.completedDateIds || []),
+        ...Object.keys(local.dateStates || {}),
+        ...Object.keys(remote.dateStates || {})
+    ]);
+    dateStateIds.forEach((id) => {
+        const localState = local.dateStates?.[id];
+        const remoteState = remote.dateStates?.[id];
+        if (localState && remoteState) {
+            dateStates[id] = localState.updatedAt > remoteState.updatedAt ? localState : remoteState;
+        } else if (localState || remoteState) {
+            dateStates[id] = localState || remoteState;
+        } else {
+            dateStates[id] = {
+                saved: local.savedDateIds.includes(id) || (remote.savedDateIds || []).includes(id),
+                completed: local.completedDateIds.includes(id) || (remote.completedDateIds || []).includes(id),
+                updatedAt: ''
+            };
+        }
+    });
+    const deletedPlaceIds = [...new Set([
+        ...(local.deletedPlaceIds || []),
+        ...(remote.deletedPlaceIds || [])
+    ])];
+    return {
+        memories: mergeEntries(local.memories, remote.memories || [], (entry) => `${entry.date}\0${entry.text}`)
+            .sort((first, second) => second.date.localeCompare(first.date)).slice(0, 1000),
+        dateIdeas: mergeEntries(local.dateIdeas, remote.dateIdeas || [], (idea) => idea.id).slice(0, 1000),
+        savedDateIds: Object.entries(dateStates).filter(([, state]) => state.saved).map(([id]) => id),
+        pickedDateId: localIsNewer ? (local.pickedDateId || remote.pickedDateId || null) : (remote.pickedDateId || local.pickedDateId || null),
+        completedDateIds: Object.entries(dateStates).filter(([, state]) => state.completed).map(([id]) => id),
+        dateStates,
+        dailyAnswers: mergeEntries(
+            localIsNewer ? (remote.dailyAnswers || []) : local.dailyAnswers,
+            localIsNewer ? local.dailyAnswers : (remote.dailyAnswers || []),
+            (entry) => entry.date
+        )
+            .sort((first, second) => second.date.localeCompare(first.date)).slice(0, 1000),
+        anniversary: localIsNewer ? (local.anniversary || remote.anniversary || '') : (remote.anniversary || local.anniversary || ''),
+        deletedPlaceIds,
+        places: mergeEntries(local.places, remote.places || [], (place) => place.id)
+            .filter((place) => !deletedPlaceIds.includes(place.id))
+    };
+}
+
+async function saveLocalSharedData(data) {
+    localStorage.setItem(MEMORIES_KEY, JSON.stringify(data.memories));
+    localStorage.setItem(DATE_IDEAS_KEY, JSON.stringify(data.dateIdeas));
+    localStorage.setItem(SAVED_DATES_KEY, JSON.stringify(data.savedDateIds));
+    localStorage.setItem(PICKED_DATE_KEY, data.pickedDateId || '');
+    localStorage.setItem(COMPLETED_DATES_KEY, JSON.stringify(data.completedDateIds));
+    localStorage.setItem(DATE_STATES_KEY, JSON.stringify(data.dateStates || {}));
+    localStorage.setItem(DAILY_ANSWERS_KEY, JSON.stringify(data.dailyAnswers));
+    localStorage.setItem(DELETED_PLACES_KEY, JSON.stringify(data.deletedPlaceIds || []));
+    if (data.anniversary) localStorage.setItem(ANNIVERSARY_KEY, data.anniversary);
+    else localStorage.removeItem(ANNIVERSARY_KEY);
+
+    const database = await openPlacesDatabase();
+    await new Promise((resolve, reject) => {
+        const transaction = database.transaction(PLACES_STORE, 'readwrite');
+        const store = transaction.objectStore(PLACES_STORE);
+        data.places.forEach((place) => store.put({
+            id: place.id,
+            name: place.name,
+            date: place.date,
+            note: place.note,
+            photo: dataUrlToBlob(place.photo)
+        }));
+        (data.deletedPlaceIds || []).forEach((id) => store.delete(id));
+        transaction.oncomplete = resolve;
+        transaction.onerror = () => reject(transaction.error || new Error('No se pudieron guardar las fotos sincronizadas.'));
+        transaction.onabort = () => reject(transaction.error || new Error('Se interrumpió la importación de fotos.'));
+    });
+
+    memories = data.memories;
+    customDates = data.dateIdeas;
+    savedDateIds = data.savedDateIds;
+    pickedDateId = data.pickedDateId;
+    completedDateIds = data.completedDateIds;
+    dateStates = data.dateStates || {};
+    dailyAnswers = data.dailyAnswers;
+    anniversaryDateInput.value = data.anniversary;
+    renderMemories();
+    renderDates();
+    renderDailyQuestion();
+    updateAnniversaryStatus(data.anniversary);
+    await renderPlaces();
+}
+
+async function cloudRequest(path, options = {}) {
+    const response = await fetch(`${cloudConfig.apiUrl}${path}`, {
+        ...options,
+        cache: 'no-store',
+        headers: {
+            ...(options.headers || {}),
+            Authorization: `Bearer ${cloudConfig.password}`
+        }
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok && response.status !== 409) {
+        if (response.status === 401) throw new Error('La clave compartida no coincide. Revisen que sea idéntica en los dos celulares.');
+        if (response.status === 413) throw new Error('Las fotos ocupan demasiado espacio para sincronizar. Elijan fotos más pequeñas.');
+        if (response.status === 429) throw new Error('Hubo muchos intentos con la clave. Esperen 15 minutos y vuelvan a intentar.');
+        throw new Error(body.error || `El servicio respondió con error ${response.status}.`);
+    }
+    return { response, body };
+}
+
+async function syncSharedData() {
+    if (!cloudConfig) return;
+    if (!navigator.onLine) {
+        setSyncStatus('Sin conexión. Sus cambios siguen guardados aquí y se sincronizarán automáticamente al volver a estar en línea.');
+        return;
+    }
+
+    setSyncStatus('Sincronizando sus recuerdos y fotos…');
+    const { body: initialState } = await cloudRequest('/api/state');
+    let remoteState = initialState;
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+        const localData = await getLocalSharedData();
+        const mergedData = mergeSharedData(localData, remoteState.data, remoteState.updatedAt);
+        await saveLocalSharedData(mergedData);
+        const serializedData = JSON.stringify(mergedData);
+        if (serializedData === JSON.stringify(remoteState.data)) {
+            localStorage.setItem(CLOUD_UPDATED_KEY, remoteState.updatedAt || new Date().toISOString());
+            setSyncStatus(`Todo está al día${remoteState.updatedAt ? ` · ${new Intl.DateTimeFormat('es-MX', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(remoteState.updatedAt))}` : ''}.`);
+            syncStatus.dataset.state = 'connected';
+            return;
+        }
+
+        const { response, body } = await cloudRequest('/api/state', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ revision: remoteState.revision, data: mergedData })
+        });
+        if (response.status === 409) {
+            remoteState = body;
+            continue;
+        }
+        localStorage.setItem(CLOUD_UPDATED_KEY, body.updatedAt);
+        setSyncStatus(`Todo está al día · ${new Intl.DateTimeFormat('es-MX', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(body.updatedAt))}.`);
+        syncStatus.dataset.state = 'connected';
+        return;
+    }
+    throw new Error('Hubo cambios simultáneos en ambos celulares. Vuelve a sincronizar para unirlos.');
+}
+
+function runCloudSync() {
+    if (cloudSyncPromise) return cloudSyncPromise;
+    cloudSyncPromise = syncSharedData()
+        .catch((error) => {
+            console.error('No se pudo sincronizar la sala:', error);
+            setSyncStatus(`${error.message} Tus datos locales siguen guardados.`, 'error');
+        })
+        .finally(() => {
+            cloudSyncPromise = null;
+        });
+    return cloudSyncPromise;
+}
+
+function scheduleCloudSync() {
+    if (!cloudConfig) return;
+    try {
+        localStorage.setItem(CLOUD_UPDATED_KEY, new Date().toISOString());
+    } catch (error) {
+        console.error('No se pudo registrar el cambio pendiente de sincronizar:', error);
+        setSyncStatus('No se pudo preparar la sincronización en este dispositivo. Revisa el espacio disponible.', 'error');
+        return;
+    }
+    clearTimeout(cloudSyncTimer);
+    setSyncStatus(navigator.onLine ? 'Cambios guardados aquí. Sincronizando en un momento…' : 'Cambios guardados sin conexión; se subirán al recuperar internet.');
+    cloudSyncTimer = setTimeout(() => void runCloudSync(), 900);
+}
+
+syncForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    let apiUrl;
+    try {
+        apiUrl = normalizeApiUrl(syncApiUrlInput.value.trim());
+    } catch (error) {
+        setSyncStatus(error.message, 'error');
+        return;
+    }
+    const password = syncPasswordInput.value;
+    if (new TextEncoder().encode(password).length < 24) {
+        setSyncStatus('La clave compartida debe tener al menos 24 bytes. Usen la misma clave privada en ambos celulares.', 'error');
+        return;
+    }
+    if (!navigator.onLine) {
+        setSyncStatus('Conéctense a internet para verificar el servicio por primera vez.', 'error');
+        return;
+    }
+
+    syncConnectButton.disabled = true;
+    setSyncStatus('Verificando el servicio privado…');
+    try {
+        const response = await fetch(`${apiUrl}/health`, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`El servicio respondió con error ${response.status}.`);
+        const health = await response.json();
+        if (health.status !== 'ok') throw new Error('El servicio respondió, pero no confirmó que está listo.');
+        cloudConfig = { apiUrl, password };
+        localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(cloudConfig));
+        updateSyncControls();
+        await runCloudSync();
+    } catch (error) {
+        console.error('No se pudo conectar al servicio compartido:', error);
+        setSyncStatus(`${error.message || 'No se pudo conectar al servicio.'} Comprueba su dirección y que esté desplegado.`, 'error');
+    } finally {
+        syncConnectButton.disabled = false;
+    }
+});
+
+syncNowButton.addEventListener('click', () => {
+    clearTimeout(cloudSyncTimer);
+    void runCloudSync();
+});
+
+syncDisconnectButton.addEventListener('click', () => {
+    try {
+        localStorage.removeItem(CLOUD_CONFIG_KEY);
+        localStorage.removeItem(CLOUD_UPDATED_KEY);
+        cloudConfig = null;
+        updateSyncControls();
+        setSyncStatus('Dispositivo desconectado. No se borró ningún recuerdo de este celular.');
+    } catch (error) {
+        console.error('No se pudo desconectar este dispositivo:', error);
+        setSyncStatus('No se pudo borrar la conexión guardada. Inténtalo de nuevo.', 'error');
+    }
+});
+
+window.addEventListener('online', () => {
+    if (cloudConfig) void runCloudSync();
+});
+window.addEventListener('offline', () => {
+    if (cloudConfig) setSyncStatus('Sin conexión. Sus cambios siguen guardados aquí y se sincronizarán al volver a estar en línea.');
+});
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && cloudConfig) void runCloudSync();
+});
+
 async function savePlace(place) {
     const database = await openPlacesDatabase();
     return new Promise((resolve, reject) => {
@@ -602,28 +1002,71 @@ async function renderPlaces() {
     placePhotoUrls = [];
     placesGrid.replaceChildren();
     try {
-        const places = await getPlaces();
-        placesCount.textContent = `${places.length} ${places.length === 1 ? 'lugar guardado' : 'lugares guardados'} en su álbum ♡`;
+        if (!archivedPlacesPromise) {
+            archivedPlacesPromise = fetch('./assets/places/visited.json')
+                .then((response) => {
+                    if (!response.ok) throw new Error(`No se pudieron cargar los lugares del chat (${response.status}).`);
+                    return response.json();
+                })
+                .then((places) => {
+                    if (!Array.isArray(places) || !places.every((place) =>
+                        place && typeof place.id === 'string' && typeof place.name === 'string' &&
+                        typeof place.date === 'string' && typeof place.note === 'string' &&
+                        Array.isArray(place.photos)
+                    )) {
+                        throw new Error('El archivo de lugares importados tiene un formato inválido.');
+                    }
+                    return places.map((place) => ({ ...place, imported: true }));
+                })
+                .catch((error) => {
+                    archivedPlacesPromise = null;
+                    throw error;
+                });
+        }
+        const [savedPlaces, archivedPlaces] = await Promise.all([getPlaces(), archivedPlacesPromise]);
+        const places = [...archivedPlaces, ...savedPlaces]
+            .sort((first, second) => (second.date || '').localeCompare(first.date || ''));
+        placesCount.textContent = `${places.length} ${places.length === 1 ? 'lugar' : 'lugares'} en su álbum ♡`;
         placesEmpty.hidden = places.length > 0;
         renderPlaceSuggestions(places);
         places.forEach((place, index) => {
             const card = document.createElement('article');
             card.className = 'place-card';
-            const photoUrl = URL.createObjectURL(place.photo);
-            placePhotoUrls.push(photoUrl);
-            const photo = document.createElement('img');
-            photo.src = photoUrl;
-            photo.alt = `Foto de ${place.name}`;
-            photo.loading = index < 6 ? 'eager' : 'lazy';
+            const photoStrip = document.createElement('div');
+            photoStrip.className = 'place-photo-strip';
+            const photos = place.photos?.length
+                ? place.photos
+                : place.photo instanceof Blob
+                    ? [{ blob: place.photo, alt: `Foto de ${place.name}` }]
+                    : [];
+            photoStrip.dataset.photoCount = String(photos.length);
+            if (photos.length) {
+                photos.forEach((photoData, photoIndex) => {
+                    const photo = document.createElement('img');
+                    photo.src = photoData.blob ? URL.createObjectURL(photoData.blob) : photoData.src;
+                    if (photoData.blob) placePhotoUrls.push(photo.src);
+                    photo.alt = photoData.alt || `Foto de ${place.name}`;
+                    photo.loading = index < 6 && photoIndex === 0 ? 'eager' : 'lazy';
+                    photoStrip.append(photo);
+                });
+            } else {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'place-photo-placeholder';
+                placeholder.setAttribute('aria-hidden', 'true');
+                placeholder.textContent = '♡';
+                photoStrip.append(placeholder);
+            }
             const copy = document.createElement('div');
             copy.className = 'place-card-copy';
             const date = document.createElement('p');
             date.className = 'place-card-date';
-            date.textContent = new Intl.DateTimeFormat('es-MX', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            }).format(new Date(`${place.date}T12:00:00`));
+            date.textContent = place.date
+                ? new Intl.DateTimeFormat('es-MX', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                }).format(new Date(`${place.date}T12:00:00`))
+                : 'Fecha por confirmar';
             const title = document.createElement('h3');
             title.textContent = place.name;
             copy.append(date, title);
@@ -633,23 +1076,28 @@ async function renderPlaces() {
                 note.textContent = place.note;
                 copy.append(note);
             }
-            const deleteButton = document.createElement('button');
-            deleteButton.className = 'place-delete-button';
-            deleteButton.type = 'button';
-            deleteButton.textContent = 'Eliminar de nuestros lugares';
-            deleteButton.setAttribute('aria-label', `Eliminar ${place.name} del álbum`);
-            deleteButton.addEventListener('click', async () => {
-                if (!window.confirm(`¿Eliminar "${place.name}" del álbum?`)) return;
-                try {
-                    await deletePlace(place.id);
-                    await renderPlaces();
-                    showToast('Lugar eliminado del álbum.');
-                } catch (error) {
-                    showPlaceFormError('No se pudo eliminar el lugar del álbum:', error);
-                }
-            });
-            copy.append(deleteButton);
-            card.append(photo, copy);
+            if (!place.imported) {
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'place-delete-button';
+                deleteButton.type = 'button';
+                deleteButton.textContent = 'Eliminar de nuestros lugares';
+                deleteButton.setAttribute('aria-label', `Eliminar ${place.name} del álbum`);
+                deleteButton.addEventListener('click', async () => {
+                    if (!window.confirm(`¿Eliminar "${place.name}" del álbum?`)) return;
+                    try {
+                        await deletePlace(place.id);
+                        const deletedIds = loadStoredList(DELETED_PLACES_KEY, (id) => typeof id === 'string');
+                        localStorage.setItem(DELETED_PLACES_KEY, JSON.stringify([...new Set([...deletedIds, place.id])]));
+                        await renderPlaces();
+                        scheduleCloudSync();
+                        showToast('Lugar eliminado del álbum.');
+                    } catch (error) {
+                        showPlaceFormError('No se pudo eliminar el lugar del álbum:', error);
+                    }
+                });
+                copy.append(deleteButton);
+            }
+            card.append(photoStrip, copy);
             placesGrid.append(card);
         });
     } catch (error) {
@@ -661,9 +1109,13 @@ async function renderPlaces() {
 
 function renderPlaceSuggestions(places) {
     placeSuggestionList.replaceChildren();
+    const normalizePlaceName = (name) => name.toLocaleLowerCase('es-MX')
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .replace(/[^a-z0-9]+/g, '');
     const missingPlaces = PLACE_SUGGESTIONS.filter((suggestion) =>
         !places.some((place) =>
-            place.name.toLocaleLowerCase() === suggestion.name.toLocaleLowerCase() &&
+            normalizePlaceName(place.name) === normalizePlaceName(suggestion.name) &&
             place.date === suggestion.date
         )
     );
@@ -848,6 +1300,7 @@ placeForm.addEventListener('submit', async (event) => {
         placePhotoPreview.hidden = true;
         placePhotoPreview.removeAttribute('src');
         await renderPlaces();
+        scheduleCloudSync();
         showToast('Lugar guardado en su álbum de aventuras ♡');
     } catch (error) {
         showPlaceFormError('No se pudo guardar el lugar en el álbum:', error);
@@ -885,6 +1338,7 @@ dailyQuestionForm.addEventListener('submit', (event) => {
     }
     dailyAnswers = nextDailyAnswers;
     renderDailyQuestion();
+    scheduleCloudSync();
     showToast('Sus respuestas de hoy quedaron guardadas ♡');
 });
 
@@ -903,6 +1357,7 @@ anniversaryForm.addEventListener('submit', (event) => {
         return;
     }
     updateAnniversaryStatus(date);
+    scheduleCloudSync();
     showToast('Su fecha especial quedó guardada ♡');
 });
 
@@ -951,6 +1406,7 @@ document.querySelector('#custom-date-form').addEventListener('submit', (event) =
         button.setAttribute('aria-pressed', String(isActive));
     });
     renderDates();
+    scheduleCloudSync();
     showToast('Plan agregado a su lista de citas ♡');
 });
 
@@ -969,6 +1425,7 @@ document.querySelector('#memory-form').addEventListener('submit', (event) => {
         memories = nextMemories;
         input.value = '';
         renderMemories();
+        scheduleCloudSync();
         showToast('Recuerdo guardado con mucho cariño ♡');
     } catch (error) {
         console.error('No se pudo guardar el recuerdo:', error);
@@ -1011,3 +1468,4 @@ if (pickedDateId) {
     if (pickedDate) datePickStatus.textContent = `Plan elegido: ${pickedDate.title}. ¡Ya tienen una próxima cita pendiente!`;
 }
 renderDates();
+loadCloudConfig();

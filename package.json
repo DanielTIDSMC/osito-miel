@@ -1,0 +1,13 @@
+{
+  "name": "osito-miel",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node backend/server.js",
+    "test:api": "node --test backend/server.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
