@@ -1058,15 +1058,47 @@ async function renderPlaces() {
             }
             const copy = document.createElement('div');
             copy.className = 'place-card-copy';
-            const date = document.createElement('p');
+            const date = document.createElement('div');
             date.className = 'place-card-date';
-            date.textContent = place.date
-                ? new Intl.DateTimeFormat('es-MX', {
+            if (place.date) {
+                date.textContent = new Intl.DateTimeFormat('es-MX', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric'
-                }).format(new Date(`${place.date}T12:00:00`))
-                : 'Fecha por confirmar';
+                }).format(new Date(`${place.date}T12:00:00`));
+            } else {
+                // Create editable date section for places without confirmed date
+                const dateLabel = document.createElement('span');
+                dateLabel.className = 'place-card-date-label';
+                dateLabel.textContent = 'Fecha por confirmar';
+                const dateInput = document.createElement('input');
+                dateInput.type = 'date';
+                dateInput.className = 'place-card-date-input';
+                dateInput.setAttribute('aria-label', `Confirmar fecha para ${place.name}`);
+                dateInput.addEventListener('change', async (event) => {
+                    try {
+                        if (!event.target.value) return;
+                        place.date = event.target.value;
+                        // Save the updated place (using put which works for both insert and update)
+                        const database = await openPlacesDatabase();
+                        await new Promise((resolve, reject) => {
+                            const transaction = database.transaction(PLACES_STORE, 'readwrite');
+                            const store = transaction.objectStore(PLACES_STORE);
+                            // Use put() which handles both insert and update
+                            store.put(place);
+                            transaction.oncomplete = resolve;
+                            transaction.onerror = () => reject(transaction.error || new Error('No se pudo guardar la fecha.'));
+                            transaction.onabort = () => reject(transaction.error || new Error('Se interrumpió el guardado.'));
+                        });
+                        await renderPlaces();
+                        scheduleCloudSync();
+                        showToast(`Fecha confirmada para ${place.name}`);
+                    } catch (error) {
+                        showPlaceFormError('No se pudo guardar la fecha:', error);
+                    }
+                });
+                date.append(dateLabel, dateInput);
+            }
             const title = document.createElement('h3');
             title.textContent = place.name;
             copy.append(date, title);
