@@ -26,8 +26,10 @@ const ANNIVERSARY_KEY = 'osito-miel.special-date.v1';
 const CLOUD_CONFIG_KEY = 'osito-miel.sync-config.v1';
 const CLOUD_UPDATED_KEY = 'osito-miel.sync-updated-at.v1';
 const DELETED_PLACES_KEY = 'osito-miel.deleted-places.v1';
+const PLACE_OVERRIDES_KEY = 'osito-miel.place-overrides.v1';
 const PLACES_DATABASE = 'osito-miel-places';
 const PLACES_STORE = 'places';
+
 const DATE_IDEAS = [
     { id: 'sunset-picnic', title: 'Picnic al atardecer', category: 'Aire libre', detail: 'Lleven algo rico, una mantita y vean cómo se pinta el cielo.', emoji: '🌇', art: 'sunset', caption: 'una tardecita juntos' },
     { id: 'coffee-date', title: 'Cafecito y plática', category: 'Comida', detail: 'Busquen una cafetería nueva y pidan algo que nunca hayan probado.', emoji: '☕', art: 'cafe', caption: 'cafecito para dos' },
@@ -50,6 +52,7 @@ const DATE_IDEAS = [
     { id: 'sunset-viewpoint', title: 'Ver el atardecer desde otro lugar', category: 'Aire libre', detail: 'Busquen un parque o mirador tranquilo y lleven algo para compartir.', emoji: '🌄', art: 'sunset', caption: 'nuestro cielo favorito' },
     { id: 'photo-challenge', title: 'Reto de fotos por colores', category: 'Creativo', detail: 'Elijan un color y encuentren cinco cosas de ese tono durante su paseo.', emoji: '📷', art: 'market', caption: 'mirar el mundo juntos' }
 ];
+
 const DAILY_QUESTIONS = [
     '¿Qué detalle chiquito de esta semana te hizo sentir querido/a?',
     '¿Qué lugar te gustaría conocer conmigo y por qué?',
@@ -66,6 +69,7 @@ const DAILY_QUESTIONS = [
     '¿Qué tradición bonita podríamos inventar para nosotros?',
     '¿Qué te gustaría que nunca dejáramos de hacer como pareja?'
 ];
+
 const PLACE_SUGGESTIONS = [
     { name: "Cafetería Regina's", date: '2026-08-16' },
     { name: 'Cafetería Granel & más', date: '2026-09-23' },
@@ -74,6 +78,7 @@ const PLACE_SUGGESTIONS = [
     { name: 'Comida japonesa por Av. 5 (UV Idiomas)', date: '2026-10-04' },
     { name: 'Café Ripoll', date: '2026-10-04' }
 ];
+
 const surpriseCard = document.querySelector('#surprise-card');
 const surpriseText = document.querySelector('#surprise-text');
 const toast = document.querySelector('#toast');
@@ -108,6 +113,7 @@ const syncStatus = document.querySelector('#sync-status');
 const syncConnectButton = document.querySelector('#sync-connect-button');
 const syncNowButton = document.querySelector('#sync-now-button');
 const syncDisconnectButton = document.querySelector('#sync-disconnect-button');
+
 let activeDateFilter = 'Todas';
 let pickedDateId = null;
 let placesDatabasePromise;
@@ -241,6 +247,25 @@ function loadStoredList(key, isValid) {
     }
 }
 
+function loadPlaceOverrides() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(PLACE_OVERRIDES_KEY) || '{}');
+        if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return {};
+        return saved;
+    } catch (error) {
+        console.error('No se pudieron cargar las fechas de lugares actualizadas:', error);
+        return {};
+    }
+}
+
+function savePlaceOverrides(overrides) {
+    try {
+        localStorage.setItem(PLACE_OVERRIDES_KEY, JSON.stringify(overrides));
+    } catch (error) {
+        console.error('No se pudieron guardar las fechas actualizadas:', error);
+    }
+}
+
 function getLocalDateKey(date = new Date()) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -293,6 +318,7 @@ let dailyAnswers = loadStoredList(
         typeof entry.question === 'string' && typeof entry.first === 'string' &&
         typeof entry.second === 'string'
 );
+
 try {
     const savedPickedId = localStorage.getItem(PICKED_DATE_KEY);
     if ([...DATE_IDEAS, ...customDates].some((idea) => idea.id === savedPickedId)) {
@@ -302,6 +328,7 @@ try {
     console.error('No se pudo leer el plan elegido:', error);
     showToast('No se pudo recuperar el plan elegido en este dispositivo.');
 }
+
 try {
     const savedAnniversary = localStorage.getItem(ANNIVERSARY_KEY);
     if (savedAnniversary && /^\d{4}-\d{2}-\d{2}$/.test(savedAnniversary)) {
@@ -585,7 +612,7 @@ async function getPlaces() {
         const request = transaction.objectStore(PLACES_STORE).getAll();
         let places;
         request.onsuccess = () => { places = request.result; };
-        transaction.oncomplete = () => resolve(places.sort((first, second) => second.date.localeCompare(first.date)));
+        transaction.oncomplete = () => resolve(places.sort((first, second) => (second.date || '').localeCompare(first.date || '')));
         transaction.onerror = () => reject(transaction.error || new Error('No se pudo leer el álbum.'));
         transaction.onabort = () => reject(transaction.error || new Error('Se interrumpió la lectura del álbum.'));
     });
@@ -656,9 +683,10 @@ function dataUrlToBlob(dataUrl) {
 async function getLocalSharedData() {
     const places = await getPlaces();
     const deletedPlaceIds = loadStoredList(DELETED_PLACES_KEY, (id) => typeof id === 'string');
+    const placeOverrides = loadPlaceOverrides();
     const activePlaces = places.filter((place) => !deletedPlaceIds.includes(place.id));
-    const totalPhotoBytes = activePlaces.reduce((total, place) => total + place.photo.size, 0);
-    if (activePlaces.some((place) => place.photo.size > 2 * 1024 * 1024) || totalPhotoBytes > 7 * 1024 * 1024) {
+    const totalPhotoBytes = activePlaces.reduce((total, place) => total + (place.photo ? place.photo.size : 0), 0);
+    if (activePlaces.some((place) => place.photo && place.photo.size > 2 * 1024 * 1024) || totalPhotoBytes > 7 * 1024 * 1024) {
         throw new Error('Las fotos superan el límite seguro para sincronizar. Reduce su tamaño o sincroniza menos fotos a la vez.');
     }
     return {
@@ -671,12 +699,13 @@ async function getLocalSharedData() {
         dailyAnswers,
         anniversary: anniversaryDateInput.value,
         deletedPlaceIds,
+        placeOverrides,
         places: await Promise.all(activePlaces.map(async (place) => ({
             id: place.id,
             name: place.name,
             date: place.date,
             note: place.note,
-            photo: await blobToDataUrl(place.photo)
+            photo: place.photo ? await blobToDataUrl(place.photo) : null
         })))
     };
 }
@@ -723,6 +752,8 @@ function mergeSharedData(local, remote, remoteUpdatedAt) {
         ...(local.deletedPlaceIds || []),
         ...(remote.deletedPlaceIds || [])
     ])];
+    const mergedOverrides = { ...(remote.placeOverrides || {}), ...(local.placeOverrides || {}) };
+
     return {
         memories: mergeEntries(local.memories, remote.memories || [], (entry) => `${entry.date}\0${entry.text}`)
             .sort((first, second) => second.date.localeCompare(first.date)).slice(0, 1000),
@@ -739,6 +770,7 @@ function mergeSharedData(local, remote, remoteUpdatedAt) {
             .sort((first, second) => second.date.localeCompare(first.date)).slice(0, 1000),
         anniversary: localIsNewer ? (local.anniversary || remote.anniversary || '') : (remote.anniversary || local.anniversary || ''),
         deletedPlaceIds,
+        placeOverrides: mergedOverrides,
         places: mergeEntries(local.places, remote.places || [], (place) => place.id)
             .filter((place) => !deletedPlaceIds.includes(place.id))
     };
@@ -753,6 +785,7 @@ async function saveLocalSharedData(data) {
     localStorage.setItem(DATE_STATES_KEY, JSON.stringify(data.dateStates || {}));
     localStorage.setItem(DAILY_ANSWERS_KEY, JSON.stringify(data.dailyAnswers));
     localStorage.setItem(DELETED_PLACES_KEY, JSON.stringify(data.deletedPlaceIds || []));
+    savePlaceOverrides(data.placeOverrides || {});
     if (data.anniversary) localStorage.setItem(ANNIVERSARY_KEY, data.anniversary);
     else localStorage.removeItem(ANNIVERSARY_KEY);
 
@@ -765,7 +798,7 @@ async function saveLocalSharedData(data) {
             name: place.name,
             date: place.date,
             note: place.note,
-            photo: dataUrlToBlob(place.photo)
+            photo: place.photo ? dataUrlToBlob(place.photo) : null
         }));
         (data.deletedPlaceIds || []).forEach((id) => store.delete(id));
         transaction.oncomplete = resolve;
@@ -1001,6 +1034,7 @@ async function renderPlaces() {
     placePhotoUrls.forEach((url) => URL.revokeObjectURL(url));
     placePhotoUrls = [];
     placesGrid.replaceChildren();
+
     try {
         if (!archivedPlacesPromise) {
             archivedPlacesPromise = fetch('./assets/places/visited.json')
@@ -1023,12 +1057,49 @@ async function renderPlaces() {
                     throw error;
                 });
         }
+
         const [savedPlaces, archivedPlaces] = await Promise.all([getPlaces(), archivedPlacesPromise]);
-        const places = [...archivedPlaces, ...savedPlaces]
+        const deletedPlaceIds = loadStoredList(DELETED_PLACES_KEY, (id) => typeof id === 'string');
+        const placeOverrides = loadPlaceOverrides();
+
+        // 1. Crear un mapa para fusionar lugares sin duplicar por ID
+        const placesMap = new Map();
+
+        // Cargar lugares precargados aplicando overrides de fecha
+        archivedPlaces.forEach((place) => {
+            if (!deletedPlaceIds.includes(place.id)) {
+                const overrideDate = placeOverrides[place.id];
+                placesMap.set(place.id, {
+                    ...place,
+                    date: overrideDate !== undefined ? overrideDate : place.date
+                });
+            }
+        });
+
+        // 2. Fusionar con lugares dinámicos creados en IndexedDB
+        savedPlaces.forEach((place) => {
+            if (!deletedPlaceIds.includes(place.id)) {
+                // Si el ID ya existe en los importados, conservar fotos e imagen pero actualizar fecha/campos
+                if (placesMap.has(place.id)) {
+                    const existing = placesMap.get(place.id);
+                    placesMap.set(place.id, {
+                        ...existing,
+                        ...place,
+                        photos: existing.photos || place.photos
+                    });
+                } else {
+                    placesMap.set(place.id, place);
+                }
+            }
+        });
+
+        const places = Array.from(placesMap.values())
             .sort((first, second) => (second.date || '').localeCompare(first.date || ''));
+
         placesCount.textContent = `${places.length} ${places.length === 1 ? 'lugar' : 'lugares'} en su álbum ♡`;
         placesEmpty.hidden = places.length > 0;
         renderPlaceSuggestions(places);
+
         places.forEach((place, index) => {
             const card = document.createElement('article');
             card.className = 'place-card';
@@ -1040,6 +1111,7 @@ async function renderPlaces() {
                     ? [{ blob: place.photo, alt: `Foto de ${place.name}` }]
                     : [];
             photoStrip.dataset.photoCount = String(photos.length);
+
             if (photos.length) {
                 photos.forEach((photoData, photoIndex) => {
                     const photo = document.createElement('img');
@@ -1056,10 +1128,12 @@ async function renderPlaces() {
                 placeholder.textContent = '♡';
                 photoStrip.append(placeholder);
             }
+
             const copy = document.createElement('div');
             copy.className = 'place-card-copy';
             const date = document.createElement('div');
             date.className = 'place-card-date';
+
             if (place.date) {
                 date.textContent = new Intl.DateTimeFormat('es-MX', {
                     year: 'numeric',
@@ -1067,7 +1141,6 @@ async function renderPlaces() {
                     day: 'numeric'
                 }).format(new Date(`${place.date}T12:00:00`));
             } else {
-                // Create editable date section for places without confirmed date
                 const dateLabel = document.createElement('span');
                 dateLabel.className = 'place-card-date-label';
                 dateLabel.textContent = 'Fecha por confirmar';
@@ -1075,21 +1148,17 @@ async function renderPlaces() {
                 dateInput.type = 'date';
                 dateInput.className = 'place-card-date-input';
                 dateInput.setAttribute('aria-label', `Confirmar fecha para ${place.name}`);
+
                 dateInput.addEventListener('change', async (event) => {
                     try {
-                        if (!event.target.value) return;
-                        place.date = event.target.value;
-                        // Save the updated place (using put which works for both insert and update)
-                        const database = await openPlacesDatabase();
-                        await new Promise((resolve, reject) => {
-                            const transaction = database.transaction(PLACES_STORE, 'readwrite');
-                            const store = transaction.objectStore(PLACES_STORE);
-                            // Use put() which handles both insert and update
-                            store.put(place);
-                            transaction.oncomplete = resolve;
-                            transaction.onerror = () => reject(transaction.error || new Error('No se pudo guardar la fecha.'));
-                            transaction.onabort = () => reject(transaction.error || new Error('Se interrumpió el guardado.'));
-                        });
+                        const newDate = event.target.value;
+                        if (!newDate) return;
+
+                        // Guardar la fecha en Overrides usando el ID único del lugar
+                        const currentOverrides = loadPlaceOverrides();
+                        currentOverrides[place.id] = newDate;
+                        savePlaceOverrides(currentOverrides);
+
                         await renderPlaces();
                         scheduleCloudSync();
                         showToast(`Fecha confirmada para ${place.name}`);
@@ -1097,17 +1166,21 @@ async function renderPlaces() {
                         showPlaceFormError('No se pudo guardar la fecha:', error);
                     }
                 });
+
                 date.append(dateLabel, dateInput);
             }
+
             const title = document.createElement('h3');
             title.textContent = place.name;
             copy.append(date, title);
+
             if (place.note) {
                 const note = document.createElement('p');
                 note.className = 'place-card-note';
                 note.textContent = place.note;
                 copy.append(note);
             }
+
             if (!place.imported) {
                 const deleteButton = document.createElement('button');
                 deleteButton.className = 'place-delete-button';
@@ -1129,6 +1202,7 @@ async function renderPlaces() {
                 });
                 copy.append(deleteButton);
             }
+
             card.append(photoStrip, copy);
             placesGrid.append(card);
         });
