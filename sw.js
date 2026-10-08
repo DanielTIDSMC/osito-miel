@@ -1,9 +1,9 @@
-const CACHE_NAME = 'osito-miel-shell-v16';
+const CACHE_NAME = 'osito-miel-shell-v17';
 const APP_SHELL = [
     './',
     './index.html',
-    './styles.css',
-    './app.js',
+    './styles.css?v=7b77940',
+    './app.js?v=7b77940',
     './manifest.json',
     './assets/icons/icon.svg',
     './assets/places/visited.json',
