@@ -96,6 +96,35 @@ test('rejects invalid imported-place date overrides', async () => {
     assert.equal(response.status, 400);
 });
 
+test('accepts shared places without an attached photo', async () => {
+    const headers = {
+        Authorization: `Bearer ${roomPassword}`,
+        'Content-Type': 'application/json',
+        Origin: 'https://danieltidsmc.github.io'
+    };
+    const current = await fetch(`${baseUrl}/api/state`, { headers }).then((response) => response.json());
+    const response = await fetch(`${baseUrl}/api/state`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+            ...current,
+            data: {
+                ...current.data,
+                places: [{
+                    id: 'place-without-photo',
+                    name: 'Lugar sin foto',
+                    date: '',
+                    note: '',
+                    photo: null
+                }]
+            }
+        })
+    });
+    assert.equal(response.status, 200);
+    const saved = await response.json();
+    assert.equal(saved.data.places[0].photo, null);
+});
+
 test('rejects non-image and oversized album data', async () => {
     const headers = {
         Authorization: `Bearer ${roomPassword}`,
