@@ -1,6 +1,6 @@
 [
   {
-    "id": "chat-tacos-triangulos",
+    "id": "chat-tacos-triangulos", "ratings": {"precios":5,"sabor":5,"atencion":4,"menu":5},
     "name": "Tacos Los Triángulos",
     "date": "2026-09-16",
     "note": "También lo anotaron como una salida del 21 de mayo. Las fotos son del chat del 16 de septiembre.",
@@ -10,24 +10,24 @@
       { "src": "./assets/places/triangulos-3.jpg", "alt": "Otra foto de Tacos Los Triángulos compartida en su chat" }
     ]
   },
-  { "id": "chat-cafeteria-fortin", "name": "Cafetería Fortín", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-domu", "name": "Domu", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-moka-rosa", "name": "Cafetería Moka Rosa", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-tipyca", "name": "Cafetería Tipyca", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-balbina", "name": "Restaurante Balbina", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-casa-alitas", "name": "La Casa de las Alitas", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-deli-burger", "name": "Deli Burger", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-rogers-pizza", "name": "Rogers Pizza", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-dulce-tentacion", "name": "Cafetería Dulce Tentación", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-comida-china-super", "name": "Comida China Súper", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-el-antojito", "name": "Restaurante El Antojito · Av. 2", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-tacos-lopez", "name": "Tacos López · Aurrerá", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-roff", "name": "ROFF", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-wingo-plaza-11", "name": "Wingo Plaza 11", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-gorditas-fabys", "name": "Gorditas Fabys", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-caza-baltazar", "name": "Caza Baltazar", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-cafeteria-fortin", "ratings": {"precios":5,"sabor":4,"atencion":3,"menu":4}, "name": "Cafetería Fortín", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-domu", "ratings": {"precios":5,"sabor":5,"atencion":4,"menu":5}, "name": "Domu", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-moka-rosa", "ratings": {"precios":4,"sabor":4,"atencion":4,"menu":4}, "name": "Cafetería Moka Rosa", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-tipyca", "ratings": {"precios":4,"sabor":5,"atencion":3,"menu":4}, "name": "Cafetería Tipyca", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-balbina", "ratings": {"precios":4,"sabor":4,"atencion":5,"menu":3}, "name": "Restaurante Balbina", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-casa-alitas", "ratings": {"precios":5,"sabor":5,"atencion":2,"menu":4}, "name": "La Casa de las Alitas", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-deli-burger", "ratings": {"precios":5,"sabor":5,"atencion":3,"menu":3}, "name": "Deli Burger", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-rogers-pizza", "ratings": {"precios":5,"sabor":4,"atencion":3,"menu":3}, "name": "Rogers Pizza", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-dulce-tentacion", "ratings": {"precios":4,"sabor":4,"atencion":4,"menu":3}, "name": "Cafetería Dulce Tentación", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-comida-china-super", "ratings": {"precios":5,"sabor":4,"atencion":3,"menu":3}, "name": "Comida China Súper", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-el-antojito", "ratings": {"precios":5,"sabor":4,"atencion":3,"menu":5}, "name": "Restaurante El Antojito · Av. 2", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-tacos-lopez", "ratings": {"precios":4,"sabor":5,"atencion":5,"menu":4}, "name": "Tacos López · Aurrerá", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-roff", "ratings": {"precios":4,"sabor":4,"atencion":3,"menu":5}, "name": "ROFF", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-wingo-plaza-11", "ratings": {"precios":3,"sabor":4,"atencion":3,"menu":4}, "name": "Wingo Plaza 11", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-gorditas-fabys", "ratings": {"precios":5,"sabor":5,"atencion":4,"menu":4}, "name": "Gorditas Fabys", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-caza-baltazar", "ratings": {"precios":4,"sabor":4,"atencion":3,"menu":3}, "name": "Caza Baltazar", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
   {
-    "id": "chat-senor-bamboo",
+    "id": "chat-senor-bamboo", "ratings": {"precios":4,"sabor":5,"atencion":5,"menu":5},
     "name": "Señor Bamboo",
     "date": "2026-06-26",
     "note": "Foto y reseña compartidas el 26 de junio.",
@@ -35,19 +35,19 @@
       { "src": "./assets/places/senor-bamboo.jpg", "alt": "Foto de Señor Bamboo compartida en su chat" }
     ]
   },
-  { "id": "chat-el-buen-pan", "name": "El Buen Pan · Plaza Fundadores", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-all-wings", "name": "All Wings", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-tortas-don-chava", "name": "Tortas Don Chava", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-meow", "name": "Meow", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-picko-marquesitas", "name": "Picko Marquesitas · Corredor 21 de Mayo", "date": "2026-05-21", "note": "El chat menciona el Corredor 21 de Mayo.", "photos": [] },
-  { "id": "chat-molinoto", "name": "Cafetería Molinoto", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-cafeteria-lulu", "name": "Cafetería Lulu · Av. 5", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-restaurante-lulu", "name": "Restaurante Lulu", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-punto-cafe", "name": "Punto Café", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-bola-de-oro", "name": "Cafetería Bola de Oro", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-starbucks", "name": "Starbucks", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-el-buen-pan", "ratings": {"precios":5,"sabor":5,"atencion":3,"menu":3}, "name": "El Buen Pan · Plaza Fundadores", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-all-wings", "ratings": {"precios":4,"sabor":5,"atencion":3,"menu":4}, "name": "All Wings", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-tortas-don-chava", "ratings": {"precios":4,"sabor":5,"atencion":3,"menu":4}, "name": "Tortas Don Chava", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-meow", "ratings": {"precios":4,"sabor":5,"atencion":5,"menu":5}, "name": "Meow", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-picko-marquesitas", "ratings": {"precios":4,"sabor":4,"atencion":4,"menu":3}, "name": "Picko Marquesitas · Corredor 21 de Mayo", "date": "2026-05-21", "note": "El chat menciona el Corredor 21 de Mayo.", "photos": [] },
+  { "id": "chat-molinoto", "ratings": {"precios":4,"sabor":4,"atencion":3,"menu":3}, "name": "Cafetería Molinoto", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-cafeteria-lulu", "ratings": {"precios":4,"sabor":3,"atencion":4,"menu":3}, "name": "Cafetería Lulu · Av. 5", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-restaurante-lulu", "ratings": {"precios":4,"sabor":4,"atencion":4,"menu":5}, "name": "Restaurante Lulu", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-punto-cafe", "ratings": {"precios":3,"sabor":4,"atencion":2,"menu":3}, "name": "Punto Café", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-bola-de-oro", "ratings": {"precios":3,"sabor":4,"atencion":5,"menu":4}, "name": "Cafetería Bola de Oro", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-starbucks", "ratings": {"precios":3,"sabor":5,"atencion":5,"menu":4}, "name": "Starbucks", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
   {
-    "id": "chat-pizza-angelotti",
+    "id": "chat-pizza-angelotti", "ratings": {"precios":4,"sabor":4,"atencion":5,"menu":5},
     "name": "Pizza Angelotti",
     "date": "2026-07-19",
     "note": "La foto quedó junto a su reseña del 19 de julio.",
@@ -55,18 +55,18 @@
       { "src": "./assets/places/pizza-angelotti.jpg", "alt": "Foto de Pizza Angelotti compartida en su chat" }
     ]
   },
-  { "id": "chat-madisson-grill", "name": "Madisson Grill", "date": "2026-09-23", "note": "Fotos y reseña compartidas el 23 de septiembre.", "photos": [
+  { "id": "chat-madisson-grill", "ratings": {"precios":4,"sabor":5,"atencion":4,"menu":5}, "name": "Madisson Grill", "date": "2026-09-23", "note": "Fotos y reseña compartidas el 23 de septiembre.", "photos": [
     { "src": "./assets/places/madisson-grill.jpg", "alt": "Foto de Madisson Grill compartida en su chat" }
   ] },
-  { "id": "chat-golosito", "name": "Tacos El Golosito · Mercado", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-rovianda", "name": "Rovianda Plus", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-golosito", "ratings": {"precios":4,"sabor":5,"atencion":5,"menu":3}, "name": "Tacos El Golosito · Mercado", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-rovianda", "ratings": {"precios":4,"sabor":5,"atencion":4,"menu":5}, "name": "Rovianda Plus", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
   { "id": "chat-santoro-grill", "name": "Santoro Grill", "date": "", "note": "Lugar anotado en su lista del chat; faltó completar la reseña.", "photos": [] },
-  { "id": "chat-regina-demeneghi", "name": "Regina Demeneghi", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-regina-demeneghi", "ratings": {"precios":4,"sabor":4,"atencion":5,"menu":4}, "name": "Regina Demeneghi", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
   { "id": "chat-thor-burguer", "name": "Thor Burguer", "date": "", "note": "Lugar anotado en su lista del chat; faltó completar la reseña.", "photos": [] },
-  { "id": "chat-las-delicias", "name": "Las Delicias", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-pollos-santa-leticia", "name": "Pollos Santa Leticia", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-las-delicias", "ratings": {"precios":4,"sabor":4,"atencion":3,"menu":4}, "name": "Las Delicias", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-pollos-santa-leticia", "ratings": {"precios":5,"sabor":5,"atencion":5,"menu":4}, "name": "Pollos Santa Leticia", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
   {
-    "id": "chat-puerquito-valiente",
+    "id": "chat-puerquito-valiente", "ratings": {"precios":4,"sabor":5,"atencion":4,"menu":4},
     "name": "Carnitas El Puerquito Valiente",
     "date": "2026-05-24",
     "note": "Foto y reseña compartidas el 24 de mayo.",
@@ -74,7 +74,7 @@
       { "src": "./assets/places/puerquito-valiente.jpg", "alt": "Foto de Carnitas El Puerquito Valiente compartida en su chat" }
     ]
   },
-  { "id": "chat-ooboneless", "name": "OOBONELESS", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-ooboneless", "ratings": {"precios":3,"sabor":3,"atencion":3,"menu":4}, "name": "OOBONELESS", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
   {
     "id": "chat-picnic",
     "name": "Pícnic juntos",
@@ -87,10 +87,10 @@
       { "src": "./assets/places/picnic-4.jpg", "alt": "Otra foto del pícnic compartida en su chat" }
     ]
   },
-  { "id": "chat-bom-apettite", "name": "Bom Apettite", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-hamburguesas-guillon", "name": "Hamburguesas Guillon", "date": "", "note": "Reseña de su primera experiencia compartida en el chat.", "photos": [] },
+  { "id": "chat-bom-apettite", "ratings": {"precios":3,"sabor":2,"atencion":0,"menu":4}, "name": "Bom Apettite", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-hamburguesas-guillon", "ratings": {"precios":5,"sabor":5,"atencion":4,"menu":3}, "name": "Hamburguesas Guillon", "date": "", "note": "Reseña de su primera experiencia compartida en el chat.", "photos": [] },
   {
-    "id": "chat-papaluchon",
+    "id": "chat-papaluchon", "ratings": {"precios":4,"sabor":4,"atencion":5,"menu":4},
     "name": "Papaluchón · todo al carbón",
     "date": "2026-09-23",
     "note": "Fotos y reseñas compartidas el 15 de agosto y el 23 de septiembre.",
@@ -103,9 +103,9 @@
       { "src": "./assets/places/papaluchon-6.jpg", "alt": "Foto de Papaluchón compartida en septiembre" }
     ]
   },
-  { "id": "chat-cafe-regina", "name": "Cafetería Regina's", "date": "2026-08-16", "note": "Reseña compartida en el chat; no se adjuntó una foto de esta cafetería.", "photos": [] },
-  { "id": "chat-hamburguesas-aguillon", "name": "Hamburguesas Aguillón", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
-  { "id": "chat-tacos-aguillon", "name": "Tacos Aguillón", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-cafe-regina", "ratings": {"precios":3,"sabor":4,"atencion":4,"menu":5}, "name": "Cafetería Regina's", "date": "2026-08-16", "note": "Reseña compartida en el chat; no se adjuntó una foto de esta cafetería.", "photos": [] },
+  { "id": "chat-hamburguesas-aguillon", "ratings": {"precios":5,"sabor":5,"atencion":4,"menu":4}, "name": "Hamburguesas Aguillón", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
+  { "id": "chat-tacos-aguillon", "ratings": {"precios":4,"sabor":4,"atencion":4,"menu":4}, "name": "Tacos Aguillón", "date": "", "note": "Reseña compartida en su chat; no se indica el día de la visita.", "photos": [] },
   {
     "id": "chat-granel-mas",
     "name": "Cafetería Granel & más",
@@ -142,7 +142,7 @@
       { "src": "./assets/places/comida-japonesa.jpg", "alt": "Foto de la salida por comida japonesa compartida en su chat" }
     ]
   },
-  { "id": "chat-crepa-la-uno", "name": "Crepa La Uno · San José", "date": "2026-10-04", "note": "Lugar anotado en su lista del 4 de octubre; el chat no identifica con certeza cuál foto corresponde.", "photos": [] },
+  { "id": "chat-crepa-la-uno", "ratings": {"precios":3,"sabor":3,"atencion":3,"menu":2}, "name": "Crepa La Uno · San José", "date": "2026-10-04", "note": "Lugar anotado en su lista del 4 de octubre; el chat no identifica con certeza cuál foto corresponde.", "photos": [] },
   {
     "id": "chat-cafe-ripoll",
     "name": "Café Ripoll",

@@ -1205,7 +1205,10 @@ async function renderPlaces() {
                     if (!Array.isArray(places) || !places.every((place) =>
                         place && typeof place.id === 'string' && typeof place.name === 'string' &&
                         typeof place.date === 'string' && typeof place.note === 'string' &&
-                        Array.isArray(place.photos)
+                        Array.isArray(place.photos) &&
+                        (!place.ratings || ['precios', 'sabor', 'atencion', 'menu'].every((key) =>
+                            Number.isInteger(place.ratings[key]) && place.ratings[key] >= 0 && place.ratings[key] <= 5
+                        ))
                     )) {
                         throw new Error('El archivo de lugares importados tiene un formato inválido.');
                     }
@@ -1341,6 +1344,32 @@ async function renderPlaces() {
                 note.className = 'place-card-note';
                 note.textContent = place.note;
                 copy.append(note);
+            }
+
+            if (place.ratings) {
+                const ratingList = document.createElement('dl');
+                ratingList.className = 'place-card-ratings';
+                ratingList.setAttribute('aria-label', `Calificaciones de ${place.name}`);
+                const categories = [
+                    ['precios', 'Precios'],
+                    ['sabor', 'Sabor'],
+                    ['atencion', 'Atenci\u00f3n'],
+                    ['menu', 'Men\u00fa']
+                ];
+                categories.forEach(([key, label]) => {
+                    const score = place.ratings[key];
+                    const item = document.createElement('div');
+                    item.className = 'place-card-rating';
+                    const term = document.createElement('dt');
+                    term.textContent = label;
+                    const value = document.createElement('dd');
+                    value.className = 'place-card-rating-value';
+                    value.setAttribute('aria-label', `${label}: ${score} de 5 estrellas`);
+                    value.innerHTML = `<span class="place-rating-stars" aria-hidden="true">${'\u2605'.repeat(score)}${'\u2606'.repeat(5 - score)}</span><span>${score}/5</span>`;
+                    item.append(term, value);
+                    ratingList.append(item);
+                });
+                copy.append(ratingList);
             }
 
             const changePhotoButton = document.createElement('button');

@@ -262,6 +262,11 @@ h1 span { color: var(--honey-dark); font-style: italic; }
 .place-confirm-date-button:hover { border-color: var(--honey); }
 .place-card h3 { margin-bottom: 5px; font-size: 15px; }
 .place-card-note { margin: 0; color: var(--soft-ink); font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
+.place-card-ratings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 8px; margin: 9px 0 0; padding-top: 8px; border-top: 1px solid var(--line); }
+.place-card-rating { display: flex; align-items: center; justify-content: space-between; gap: 5px; min-width: 0; font-size: 9px; }
+.place-card-rating dt { color: var(--soft-ink); }
+.place-card-rating dd { display: flex; align-items: center; gap: 3px; margin: 0; white-space: nowrap; }
+.place-rating-stars { color: var(--honey-dark); letter-spacing: -1px; font-size: 10px; }
 .place-change-photo-button { margin-top: 10px; padding: 7px 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--surface-honey); color: var(--honey-dark); cursor: pointer; font-size: 9px; font-weight: 700; }
 .place-change-photo-button:hover { border-color: var(--honey); }
 .place-change-photo-button:disabled { cursor: wait; opacity: .7; }
