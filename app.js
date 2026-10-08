@@ -263,6 +263,7 @@ function savePlaceOverrides(overrides) {
         localStorage.setItem(PLACE_OVERRIDES_KEY, JSON.stringify(overrides));
     } catch (error) {
         console.error('No se pudieron guardar las fechas actualizadas:', error);
+        throw error;
     }
 }
 
@@ -1144,17 +1145,26 @@ async function renderPlaces() {
                 const dateLabel = document.createElement('span');
                 dateLabel.className = 'place-card-date-label';
                 dateLabel.textContent = 'Fecha por confirmar';
+
                 const dateInput = document.createElement('input');
                 dateInput.type = 'date';
                 dateInput.className = 'place-card-date-input';
-                dateInput.setAttribute('aria-label', `Confirmar fecha para ${place.name}`);
+                dateInput.setAttribute('aria-label', `Elegir fecha para ${place.name}`);
 
-                dateInput.addEventListener('change', async (event) => {
+                const confirmButton = document.createElement('button');
+                confirmButton.type = 'button';
+                confirmButton.className = 'place-confirm-date-button';
+                confirmButton.textContent = 'Confirmar fecha';
+
+                confirmButton.addEventListener('click', async () => {
                     try {
-                        const newDate = event.target.value;
-                        if (!newDate) return;
+                        const newDate = dateInput.value;
+                        if (!newDate) {
+                            showToast('Elige primero una fecha en el calendario.');
+                            return;
+                        }
 
-                        // Guardar la fecha en Overrides usando el ID único del lugar
+                        // Guardar la fecha en Overrides únicamente al hacer clic en el botón
                         const currentOverrides = loadPlaceOverrides();
                         currentOverrides[place.id] = newDate;
                         savePlaceOverrides(currentOverrides);
@@ -1167,7 +1177,7 @@ async function renderPlaces() {
                     }
                 });
 
-                date.append(dateLabel, dateInput);
+                date.append(dateLabel, dateInput, confirmButton);
             }
 
             const title = document.createElement('h3');

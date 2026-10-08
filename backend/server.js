@@ -17,6 +17,7 @@ const ALLOWED_DATA_KEYS = new Set([
     'anniversary',
     'places',
     'deletedPlaceIds',
+    'placeOverrides',
     'dateStates'
 ]);
 
@@ -50,6 +51,15 @@ function validateData(data) {
         Object.values(data.dateStates).some((state) =>
             !state || typeof state.saved !== 'boolean' || typeof state.completed !== 'boolean' ||
             typeof state.updatedAt !== 'string'
+        )
+    )) return false;
+    if (data.placeOverrides !== undefined && (
+        !data.placeOverrides || typeof data.placeOverrides !== 'object' || Array.isArray(data.placeOverrides) ||
+        Object.keys(data.placeOverrides).length > 1000 ||
+        Object.entries(data.placeOverrides).some(([id, date]) =>
+            !id || id.length > 200 || typeof date !== 'string' ||
+            !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+            new Date(`${date}T00:00:00.000Z`).toISOString().slice(0, 10) !== date
         )
     )) return false;
 
@@ -108,6 +118,7 @@ async function loadState(filePath) {
                     anniversary: '',
                     places: [],
                     deletedPlaceIds: [],
+                    placeOverrides: {},
                     dateStates: {}
                 }
             };

@@ -52,6 +52,7 @@ test('saves shared state and rejects stale writes without losing data', async ()
             ...initial.data,
             memories: [{ text: 'Recuerdo de prueba', date: '2026-10-07' }],
             deletedPlaceIds: ['place-deleted'],
+            placeOverrides: { 'chat-cafeteria-fortin': '2026-06-26' },
             dateStates: { 'sunset-picnic': { saved: false, completed: true, updatedAt: '2026-10-07T00:00:00.000Z' } }
         }
     };
@@ -71,9 +72,28 @@ test('saves shared state and rejects stale writes without losing data', async ()
     assert.equal(remote.revision, 1);
     assert.equal(remote.data.memories[0].text, 'Recuerdo de prueba');
     assert.deepEqual(remote.data.deletedPlaceIds, ['place-deleted']);
+    assert.deepEqual(remote.data.placeOverrides, { 'chat-cafeteria-fortin': '2026-06-26' });
     assert.equal(remote.data.dateStates['sunset-picnic'].completed, true);
     const disk = JSON.parse(await readFile(join(temporaryDirectory, 'data', 'state.json'), 'utf8'));
     assert.equal(disk.revision, 1);
+});
+
+test('rejects invalid imported-place date overrides', async () => {
+    const headers = {
+        Authorization: `Bearer ${roomPassword}`,
+        'Content-Type': 'application/json',
+        Origin: 'https://danieltidsmc.github.io'
+    };
+    const current = await fetch(`${baseUrl}/api/state`, { headers }).then((response) => response.json());
+    const response = await fetch(`${baseUrl}/api/state`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+            ...current,
+            data: { ...current.data, placeOverrides: { 'chat-cafeteria-fortin': '2026-02-30' } }
+        })
+    });
+    assert.equal(response.status, 400);
 });
 
 test('rejects non-image and oversized album data', async () => {
