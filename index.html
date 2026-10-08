@@ -14,12 +14,30 @@
     <script src="app.js" defer></script>
 </head>
 <body>
+    <div id="loading-screen" class="loading-screen" role="status" aria-live="polite">
+        <div class="loading-heart" aria-hidden="true">♡</div>
+        <p>Preparando nuestro rinconcito...</p>
+        <span class="loading-track" aria-hidden="true"><span></span></span>
+    </div>
     <main class="page-shell">
         <header class="topbar">
             <a class="wordmark" href="./" aria-label="Un poquito de miel, inicio">
                 <span class="wordmark-icon" aria-hidden="true">♡</span>
                 <span>un poquito <b>de miel</b></span>
             </a>
+            <div class="section-nav-wrap">
+                <button id="section-menu-toggle" class="section-menu-toggle" type="button" aria-label="Abrir menú de secciones" aria-expanded="false" aria-controls="section-menu">
+                    <span class="menu-lines" aria-hidden="true"><span></span><span></span><span></span></span>
+                    <span>Secciones</span>
+                </button>
+                <nav id="section-menu" class="section-menu" aria-label="Secciones de la app" hidden>
+                    <button type="button" data-view-target="home" aria-current="page"><span aria-hidden="true">♡</span> Inicio</button>
+                    <button type="button" data-view-target="memories"><span aria-hidden="true">✿</span> Recuerdos</button>
+                    <button type="button" data-view-target="plans"><span aria-hidden="true">✦</span> Planes</button>
+                    <button type="button" data-view-target="together"><span aria-hidden="true">♡</span> Para nosotros</button>
+                    <button type="button" data-view-target="settings"><span aria-hidden="true">⚙</span> Ajustes</button>
+                </nav>
+            </div>
             <div class="topbar-actions">
                 <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Activar modo oscuro" aria-pressed="false">
                     <span id="theme-icon" aria-hidden="true">☾</span>
@@ -78,7 +96,8 @@
             <button id="another-button" class="text-button" type="button">Otra notita <span aria-hidden="true">↻</span></button>
         </section>
 
-        <section class="love-note" aria-labelledby="little-things-title">
+        <div class="app-view" data-app-view="home">
+            <section class="love-note" aria-labelledby="little-things-title">
             <div class="section-label">
                 <span class="section-icon" aria-hidden="true">✿</span>
                 <div>
@@ -106,9 +125,71 @@
                     <p>Donde sea que estés tú, ahí quiero estar yo.</p>
                 </article>
             </div>
-        </section>
-
-        <section class="date-plans" aria-labelledby="date-plans-title">
+            </section>
+        </div>
+        <div class="app-view" data-app-view="memories" hidden>
+            <section class="memory-section" aria-labelledby="memory-title">
+            <div class="section-label">
+                <span class="section-icon memory-icon" aria-hidden="true">❀</span>
+                <div>
+                    <p class="eyebrow">NUESTRO FRASQUITO</p>
+                    <h2 id="memory-title">Un recuerdo bonito</h2>
+                </div>
+            </div>
+            <form id="memory-form" class="memory-form">
+                <label class="sr-only" for="memory-input">Escribe un recuerdo bonito</label>
+                <input id="memory-input" type="text" maxlength="160" placeholder="Escribe aquí un momentito que quieras guardar..." required>
+                <button class="save-button" type="submit">Guardar <span aria-hidden="true">＋</span></button>
+            </form>
+            <ul id="memory-list" class="memory-list" aria-live="polite"></ul>
+            <p id="memory-empty" class="memory-empty">Los recuerdos que guardes aparecerán aquí, como miel en un frasquito.</p>
+            </section>
+            <section class="places-section" aria-labelledby="places-title">
+            <div class="section-label">
+                <span class="section-icon memory-icon" aria-hidden="true">⌖</span>
+                <div>
+                    <p class="eyebrow">PEDACITOS DE NUESTRAS SALIDAS</p>
+                    <h2 id="places-title">Lugares que ya visitamos</h2>
+                </div>
+            </div>
+            <p id="places-count" class="places-count">Su álbum de aventuras aparecerá aquí.</p>
+            <div id="places-grid" class="places-grid"></div>
+            <p id="places-empty" class="places-empty">
+                Todavía no hay lugares guardados. Agreguen el primero con una foto bonita ♡
+            </p>
+            <div id="place-suggestions" class="place-suggestions" hidden>
+                <p>Encontré estos lugares en el chat. Elijan uno, revisen su fecha y agreguen la foto:</p>
+                <div id="place-suggestion-list" class="place-suggestion-list"></div>
+            </div>
+            <form id="place-form" class="place-form">
+                <div class="place-field">
+                    <label for="place-name">¿A dónde fueron?</label>
+                    <input id="place-name" type="text" maxlength="70" placeholder="Nombre del lugar" required>
+                </div>
+                <div class="place-field">
+                    <label for="place-date">¿Cuándo fueron?</label>
+                    <input id="place-date" type="date" required>
+                </div>
+                <div class="place-field place-photo-field">
+                    <label for="place-photo">Agrega hasta 5 fotos</label>
+                    <input id="place-photo" type="file" accept="image/*" multiple required>
+                    <span id="place-photo-count" class="place-photo-count" aria-live="polite"></span>
+                </div>
+                <img id="place-photo-preview" class="place-photo-preview" alt="Vista previa de la foto elegida" hidden>
+                <div class="place-field place-note-field">
+                    <label for="place-note">Un detalle de ese día (opcional)</label>
+                    <textarea id="place-note" maxlength="240" rows="2" placeholder="¿Qué fue lo más bonito de esa salida?"></textarea>
+                </div>
+                <button class="add-date-button" type="submit">Guardar en nuestros lugares ♡</button>
+            </form>
+            <p class="places-privacy-note">
+                Las fotos precargadas forman parte del sitio público de GitHub Pages; cualquiera que tenga su enlace podría verlas.
+                Las fotos nuevas se guardan en este dispositivo y solo se comparten al conectar la sincronización privada.
+            </p>
+            </section>
+        </div>
+        <div class="app-view" data-app-view="plans" hidden>
+            <section class="date-plans" aria-labelledby="date-plans-title">
             <div class="section-label date-plans-heading">
                 <span class="section-icon" aria-hidden="true">✦</span>
                 <div>
@@ -143,52 +224,10 @@
                 </select>
                 <button class="add-date-button" type="submit">＋ Agregar plan</button>
             </form>
-        </section>
-
-        <section class="places-section" aria-labelledby="places-title">
-            <div class="section-label">
-                <span class="section-icon memory-icon" aria-hidden="true">⌖</span>
-                <div>
-                    <p class="eyebrow">PEDACITOS DE NUESTRAS SALIDAS</p>
-                    <h2 id="places-title">Lugares que ya visitamos</h2>
-                </div>
-            </div>
-            <p id="places-count" class="places-count">Su álbum de aventuras aparecerá aquí.</p>
-            <div id="places-grid" class="places-grid"></div>
-            <p id="places-empty" class="places-empty">
-                Todavía no hay lugares guardados. Agreguen el primero con una foto bonita ♡
-            </p>
-            <div id="place-suggestions" class="place-suggestions" hidden>
-                <p>Encontré estos lugares en el chat. Elijan uno, revisen su fecha y agreguen la foto:</p>
-                <div id="place-suggestion-list" class="place-suggestion-list"></div>
-            </div>
-            <form id="place-form" class="place-form">
-                <div class="place-field">
-                    <label for="place-name">¿A dónde fueron?</label>
-                    <input id="place-name" type="text" maxlength="70" placeholder="Nombre del lugar" required>
-                </div>
-                <div class="place-field">
-                    <label for="place-date">¿Cuándo fueron?</label>
-                    <input id="place-date" type="date" required>
-                </div>
-                <div class="place-field place-photo-field">
-                    <label for="place-photo">Agrega una foto</label>
-                    <input id="place-photo" type="file" accept="image/*" required>
-                </div>
-                <img id="place-photo-preview" class="place-photo-preview" alt="Vista previa de la foto elegida" hidden>
-                <div class="place-field place-note-field">
-                    <label for="place-note">Un detalle de ese día (opcional)</label>
-                    <textarea id="place-note" maxlength="240" rows="2" placeholder="¿Qué fue lo más bonito de esa salida?"></textarea>
-                </div>
-                <button class="add-date-button" type="submit">Guardar en nuestros lugares ♡</button>
-            </form>
-            <p class="places-privacy-note">
-                Las fotos precargadas forman parte del sitio público de GitHub Pages; cualquiera que tenga su enlace podría verlas.
-                Las fotos nuevas se guardan en este dispositivo y solo se comparten al conectar la sincronización privada.
-            </p>
-        </section>
-
-        <section class="couple-question-section" aria-labelledby="couple-question-title">
+            </section>
+        </div>
+        <div class="app-view" data-app-view="together" hidden>
+            <section class="couple-question-section" aria-labelledby="couple-question-title">
             <div class="section-label">
                 <span class="section-icon memory-icon" aria-hidden="true">?</span>
                 <div>
@@ -208,9 +247,8 @@
                 La pregunta cambia cada día. Las respuestas se guardan solo en este dispositivo.
             </p>
             <div id="daily-history" class="daily-history" aria-label="Preguntas y respuestas anteriores"></div>
-        </section>
-
-        <section class="anniversary-section" aria-labelledby="anniversary-title">
+            </section>
+            <section class="anniversary-section" aria-labelledby="anniversary-title">
             <div class="section-label">
                 <span class="section-icon" aria-hidden="true">♡</span>
                 <div>
@@ -226,9 +264,8 @@
             <p id="anniversary-status" class="anniversary-status" role="status" aria-live="polite">
                 Guarda su fecha y aquí verán cuánto falta para celebrarla.
             </p>
-        </section>
-
-        <section class="reminder-section" aria-labelledby="reminder-title">
+            </section>
+            <section class="reminder-section" aria-labelledby="reminder-title">
             <div class="section-label">
                 <span class="section-icon" aria-hidden="true">♡</span>
                 <div>
@@ -245,9 +282,10 @@
             <p id="reminder-status" class="reminder-status" role="status" aria-live="polite">
                 Recibe una notita diaria. Para que llegue, deja esta página abierta.
             </p>
-        </section>
-
-        <section class="sync-section" aria-labelledby="sync-title">
+            </section>
+        </div>
+        <div class="app-view" data-app-view="settings" hidden>
+            <section class="sync-section" aria-labelledby="sync-title">
             <div class="section-label">
                 <span class="section-icon" aria-hidden="true">⇄</span>
                 <div>
@@ -274,8 +312,10 @@
                     <button id="sync-connect-button" class="add-date-button" type="submit">Conectar y sincronizar</button>
                     <button id="sync-now-button" class="sync-secondary-button" type="button" hidden>Sincronizar ahora</button>
                     <button id="sync-disconnect-button" class="sync-secondary-button" type="button" hidden>Desconectar este dispositivo</button>
+                    <button id="push-notifications-button" class="sync-secondary-button" type="button" hidden>Activar notificaciones push</button>
                 </div>
             </form>
+            <p id="push-notifications-status" class="sync-status" role="status" aria-live="polite" hidden></p>
             <p id="sync-status" class="sync-status" role="status" aria-live="polite">
                 Por ahora, los datos permanecen solo en este dispositivo. La clave no se publica en la página.
             </p>
@@ -283,24 +323,9 @@
                 Usen una clave larga y privada. Los datos viajan por HTTPS y Railway guarda la copia en su almacenamiento;
                 la clave se conserva solo en cada navegador que conecten. El modo sin conexión sigue disponible.
             </p>
-        </section>
+            </section>
+        </div>
 
-        <section class="memory-section" aria-labelledby="memory-title">
-            <div class="section-label">
-                <span class="section-icon memory-icon" aria-hidden="true">❀</span>
-                <div>
-                    <p class="eyebrow">NUESTRO FRASQUITO</p>
-                    <h2 id="memory-title">Un recuerdo bonito</h2>
-                </div>
-            </div>
-            <form id="memory-form" class="memory-form">
-                <label class="sr-only" for="memory-input">Escribe un recuerdo bonito</label>
-                <input id="memory-input" type="text" maxlength="160" placeholder="Escribe aquí un momentito que quieras guardar..." required>
-                <button class="save-button" type="submit">Guardar <span aria-hidden="true">＋</span></button>
-            </form>
-            <ul id="memory-list" class="memory-list" aria-live="polite"></ul>
-            <p id="memory-empty" class="memory-empty">Los recuerdos que guardes aparecerán aquí, como miel en un frasquito.</p>
-        </section>
 
         <footer class="footer">
             <span aria-hidden="true">♡</span>

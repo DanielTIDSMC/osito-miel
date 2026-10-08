@@ -32,6 +32,9 @@ const PLACES_DATABASE = 'osito-miel-places';
 const PLACES_STORE = 'places';
 const MAX_SYNC_PLACE_PHOTO_BYTES = 2 * 1024 * 1024;
 const MAX_SYNC_PHOTOS_BYTES = 7 * 1024 * 1024;
+const MAX_PLACE_PHOTOS = 5;
+const PUSH_DEVICE_ID_KEY = 'osito-miel.push-device-id.v1';
+const PUSH_ENABLED_KEY = 'osito-miel.push-enabled.v1';
 
 const DATE_IDEAS = [
     { id: 'sunset-picnic', title: 'Picnic al atardecer', category: 'Aire libre', detail: 'Lleven algo rico, una mantita y vean cómo se pinta el cielo.', emoji: '🌇', art: 'sunset', caption: 'una tardecita juntos' },
@@ -104,6 +107,7 @@ const anniversaryStatus = document.querySelector('#anniversary-status');
 const placeForm = document.querySelector('#place-form');
 const placePhotoInput = document.querySelector('#place-photo');
 const placePhotoPreview = document.querySelector('#place-photo-preview');
+const placePhotoCount = document.querySelector('#place-photo-count');
 const placesGrid = document.querySelector('#places-grid');
 const placesCount = document.querySelector('#places-count');
 const placesEmpty = document.querySelector('#places-empty');
@@ -116,6 +120,8 @@ const syncStatus = document.querySelector('#sync-status');
 const syncConnectButton = document.querySelector('#sync-connect-button');
 const syncNowButton = document.querySelector('#sync-now-button');
 const syncDisconnectButton = document.querySelector('#sync-disconnect-button');
+const pushNotificationsButton = document.querySelector('#push-notifications-button');
+const pushNotificationsStatus = document.querySelector('#push-notifications-status');
 
 let activeDateFilter = 'Todas';
 let pickedDateId = null;
@@ -645,6 +651,49 @@ function updateSyncControls() {
     syncNowButton.hidden = !cloudConfig;
     syncDisconnectButton.hidden = !cloudConfig;
     syncConnectButton.textContent = cloudConfig ? 'Guardar conexión y sincronizar' : 'Conectar y sincronizar';
+    updatePushControls();
+}
+
+function getPushDeviceId() {
+    let id = localStorage.getItem(PUSH_DEVICE_ID_KEY);
+    if (!id) { id = crypto.randomUUID(); localStorage.setItem(PUSH_DEVICE_ID_KEY, id); }
+    return id;
+}
+
+function setPushStatus(message, state = '') {
+    pushNotificationsStatus.hidden = !message;
+    pushNotificationsStatus.textContent = message;
+    if (state) pushNotificationsStatus.dataset.state = state;
+    else delete pushNotificationsStatus.dataset.state;
+}
+
+async function updatePushControls() {
+    if (!pushNotificationsButton) return;
+    const supported = Boolean(cloudConfig && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window);
+    pushNotificationsButton.hidden = !supported;
+    if (!supported) { setPushStatus('Conecta la sincronizaci\u00f3n para activar avisos cuando Osito agregue recuerdos.'); return; }
+    try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription && Notification.permission === 'granted' && localStorage.getItem(PUSH_ENABLED_KEY) === 'true') {
+            pushNotificationsButton.textContent = 'Notificaciones activadas';
+            pushNotificationsButton.disabled = true;
+            setPushStatus('Este celular recibir\u00e1 avisos cuando haya recuerdos nuevos.');
+        } else {
+            pushNotificationsButton.textContent = 'Activar notificaciones push';
+            pushNotificationsButton.disabled = false;
+            setPushStatus(Notification.permission === 'denied' ? 'Las notificaciones est\u00e1n bloqueadas en los ajustes del navegador.' : 'Act\u00edvalas una vez en cada celular para recibir avisos de nuevos recuerdos.');
+        }
+    } catch (error) {
+        pushNotificationsButton.disabled = false;
+        setPushStatus('Este navegador todav\u00eda no permite activar notificaciones push.');
+    }
+}
+
+function urlBase64ToUint8Array(value) {
+    const padding = '='.repeat((4 - value.length % 4) % 4);
+    const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
+    return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
 }
 
 function loadCloudConfig() {
@@ -889,7 +938,7 @@ async function syncSharedData() {
         const { response, body } = await cloudRequest('/api/state', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ revision: remoteState.revision, data: mergedData })
+            body: JSON.stringify({ revision: remoteState.revision, data: mergedData, deviceId: getPushDeviceId() })
         });
         if (response.status === 409) {
             remoteState = body;
@@ -981,13 +1030,53 @@ syncForm.addEventListener('submit', async (event) => {
     }
 });
 
+pushNotificationsButton.addEventListener('click', async () => {
+    if (!cloudConfig) return;
+    pushNotificationsButton.disabled = true;
+    try {
+        const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+        if (permission !== 'granted') throw new Error('El navegador no autoriz\u00f3 las notificaciones.');
+        const registration = await navigator.serviceWorker.ready;
+        const { body: keyData } = await cloudRequest('/api/push/public-key');
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(keyData.publicKey)
+            });
+        }
+        await cloudRequest('/api/push/subscriptions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ deviceId: getPushDeviceId(), subscription: subscription.toJSON() })
+        });
+        localStorage.setItem(PUSH_ENABLED_KEY, 'true');
+        setPushStatus('Este celular recibir\u00e1 avisos cuando haya recuerdos nuevos.');
+        pushNotificationsButton.textContent = 'Notificaciones activadas';
+    } catch (error) {
+        setPushStatus(error.message || 'No se pudieron activar las notificaciones.', 'error');
+    } finally {
+        pushNotificationsButton.disabled = false;
+        await updatePushControls();
+    }
+});
+
 syncNowButton.addEventListener('click', () => {
     clearTimeout(cloudSyncTimer);
     void runCloudSync();
 });
 
-syncDisconnectButton.addEventListener('click', () => {
+syncDisconnectButton.addEventListener('click', async () => {
     try {
+        if ('serviceWorker' in navigator && cloudConfig) {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.getSubscription();
+            if (subscription) {
+                try { await cloudRequest('/api/push/subscriptions', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId: getPushDeviceId() }) }); } catch (error) { console.warn('No se pudo quitar la suscripcion remota; se limpiara al intentar enviar el siguiente aviso.'); }
+                await subscription.unsubscribe();
+            }
+        }
+        localStorage.removeItem(PUSH_ENABLED_KEY);
         localStorage.removeItem(CLOUD_CONFIG_KEY);
         localStorage.removeItem(CLOUD_UPDATED_KEY);
         localStorage.removeItem(CLOUD_REVISION_KEY);
@@ -1079,6 +1168,25 @@ async function compressPlacePhoto(file) {
             0.82
         );
     });
+}
+
+async function assertPlacePhotoBatchFits(placeId, newPhotos, replacePrimary = false) {
+    if (newPhotos.some((photo) => photo.size > MAX_SYNC_PLACE_PHOTO_BYTES)) {
+        throw new Error('Cada foto debe quedar por debajo de 2 MB. Elige imágenes más pequeñas.');
+    }
+    const places = await getPlaces();
+    const existingBytes = places.reduce((total, place) => {
+        const keepPrimary = !(replacePrimary && place.id === placeId);
+        const primaryBytes = keepPrimary && place.photo instanceof Blob ? place.photo.size : 0;
+        const additionalBytes = (place.additionalPhotos || [])
+            .filter((photo) => photo instanceof Blob)
+            .reduce((sum, photo) => sum + photo.size, 0);
+        return total + primaryBytes + additionalBytes;
+    }, 0);
+    const addedBytes = newPhotos.reduce((total, photo) => total + photo.size, 0);
+    if (existingBytes + addedBytes > MAX_SYNC_PHOTOS_BYTES) {
+        throw new Error('El álbum puede sincronizar hasta 7 MB de fotos. Quita o reduce algunas antes de agregar más.');
+    }
 }
 
 async function renderPlaces() {
@@ -1238,42 +1346,53 @@ async function renderPlaces() {
             const changePhotoButton = document.createElement('button');
             changePhotoButton.className = 'place-change-photo-button';
             changePhotoButton.type = 'button';
-            changePhotoButton.textContent = 'Cambiar foto';
-            changePhotoButton.setAttribute('aria-label', `Cambiar foto de ${place.name}`);
+            changePhotoButton.textContent = photos.length ? 'Cambiar foto' : 'Agregar fotos';
+            changePhotoButton.setAttribute('aria-label', photos.length ? `Cambiar foto de ${place.name}` : `Agregar fotos a ${place.name}`);
             const changePhotoInput = document.createElement('input');
             changePhotoInput.className = 'place-change-photo-input';
             changePhotoInput.type = 'file';
             changePhotoInput.accept = 'image/*';
+            changePhotoInput.multiple = photos.length === 0;
             changePhotoInput.hidden = true;
-            changePhotoInput.setAttribute('aria-label', `Elegir nueva foto para ${place.name}`);
+            changePhotoInput.setAttribute('aria-label', `Elegir fotos para ${place.name}`);
             changePhotoButton.addEventListener('click', () => changePhotoInput.click());
             changePhotoInput.addEventListener('change', async () => {
-                const file = changePhotoInput.files?.[0];
-                if (!file) return;
+                const files = Array.from(changePhotoInput.files || []);
+                if (!files.length) return;
+                if (photos.length === 0 && files.length > MAX_PLACE_PHOTOS) {
+                    showToast(`Puedes agregar hasta ${MAX_PLACE_PHOTOS} fotos por lugar.`);
+                    changePhotoInput.value = '';
+                    return;
+                }
 
                 changePhotoButton.disabled = true;
-                changePhotoButton.textContent = 'Guardando foto…';
+                changePhotoButton.textContent = photos.length ? 'Guardando foto…' : 'Guardando fotos…';
                 try {
-                    const photo = await compressPlacePhoto(file);
-                    if (photo.size > MAX_SYNC_PLACE_PHOTO_BYTES) {
-                        throw new Error('La foto optimizada supera 2 MB. Elige una imagen más pequeña.');
-                    }
+                    const newPhotos = [];
+                    for (const file of files) newPhotos.push(await compressPlacePhoto(file));
+                    await assertPlacePhotoBatchFits(place.id, newPhotos);
+                    const current = (await getPlaces()).find((saved) => saved.id === place.id);
                     await updatePlace({
                         id: place.id,
                         name: place.name,
-                        date: place.date || '',
-                        note: place.note || '',
-                        photo,
-                        additionalPhotos: (await getPlaces()).find((saved) => saved.id === place.id)?.additionalPhotos || []
+                        date: current?.date || place.date || '',
+                        note: current?.note || place.note || '',
+                        photo: newPhotos[0],
+                        additionalPhotos: [
+                            ...(current?.additionalPhotos || []),
+                            ...newPhotos.slice(1)
+                        ]
                     });
                     await renderPlaces();
                     scheduleCloudSync();
-                    showToast(`Foto de ${place.name} actualizada ♡`);
+                    showToast(newPhotos.length === 1
+                        ? `Foto de ${place.name} actualizada ♡`
+                        : `${newPhotos.length} fotos agregadas a ${place.name} ♡`);
                 } catch (error) {
-                    console.error(`No se pudo cambiar la foto de ${place.name}:`, error);
-                    showToast(error.message || 'No se pudo guardar la nueva foto.');
+                    console.error(`No se pudieron guardar las fotos de ${place.name}:`, error);
+                    showToast(error.message || 'No se pudieron guardar las fotos.');
                     changePhotoButton.disabled = false;
-                    changePhotoButton.textContent = 'Cambiar foto';
+                    changePhotoButton.textContent = photos.length ? 'Cambiar foto' : 'Agregar fotos';
                 } finally {
                     changePhotoInput.value = '';
                 }
@@ -1282,40 +1401,54 @@ async function renderPlaces() {
             const addPhotoButton = document.createElement('button');
             addPhotoButton.className = 'place-change-photo-button';
             addPhotoButton.type = 'button';
-            addPhotoButton.textContent = 'Agregar foto';
-            addPhotoButton.hidden = !place.date || photos.length === 0;
-            addPhotoButton.setAttribute('aria-label', `Agregar foto a ${place.name}`);
+            addPhotoButton.textContent = 'Agregar fotos';
+            addPhotoButton.hidden = !place.date || photos.length === 0 || photos.length >= MAX_PLACE_PHOTOS;
+            addPhotoButton.setAttribute('aria-label', `Agregar fotos a ${place.name}`);
             const addPhotoInput = document.createElement('input');
             addPhotoInput.className = 'place-change-photo-input';
             addPhotoInput.type = 'file';
             addPhotoInput.accept = 'image/*';
+            addPhotoInput.multiple = true;
             addPhotoInput.hidden = true;
-            addPhotoInput.setAttribute('aria-label', `Elegir foto para agregar a ${place.name}`);
+            addPhotoInput.setAttribute('aria-label', `Elegir fotos para agregar a ${place.name}`);
             addPhotoButton.addEventListener('click', () => addPhotoInput.click());
             addPhotoInput.addEventListener('change', async () => {
-                const file = addPhotoInput.files?.[0];
-                if (!file) return;
+                const files = Array.from(addPhotoInput.files || []);
+                if (!files.length) return;
+                const current = (await getPlaces()).find((saved) => saved.id === place.id);
+                const currentPhotoCount = current?.photo instanceof Blob
+                    ? 1 + (current.additionalPhotos || []).length
+                    : (place.photos || []).length + (current?.additionalPhotos || []).length;
+                const availableSlots = Math.max(0, MAX_PLACE_PHOTOS - currentPhotoCount);
+                if (files.length > availableSlots) {
+                    showToast(`En este lugar caben ${availableSlots} foto${availableSlots === 1 ? '' : 's'} más (máximo ${MAX_PLACE_PHOTOS}).`);
+                    addPhotoInput.value = '';
+                    return;
+                }
                 addPhotoButton.disabled = true;
-                addPhotoButton.textContent = 'Agregando foto...';
+                addPhotoButton.textContent = 'Agregando fotos…';
                 try {
-                    const photo = await compressPlacePhoto(file);
-                    const current = (await getPlaces()).find((saved) => saved.id === place.id);
+                    const newPhotos = [];
+                    for (const file of files) newPhotos.push(await compressPlacePhoto(file));
+                    await assertPlacePhotoBatchFits(place.id, newPhotos);
                     await updatePlace({
                         id: place.id,
                         name: place.name,
                         date: current?.date || place.date || '',
                         note: current?.note || place.note || '',
                         photo: current?.photo || null,
-                        additionalPhotos: [...(current?.additionalPhotos || []), photo]
+                        additionalPhotos: [...(current?.additionalPhotos || []), ...newPhotos]
                     });
                     await renderPlaces();
                     scheduleCloudSync();
-                    showToast(`Foto agregada a ${place.name}`);
+                    showToast(newPhotos.length === 1
+                        ? `Foto agregada a ${place.name}`
+                        : `${newPhotos.length} fotos agregadas a ${place.name}`);
                 } catch (error) {
-                    console.error(`No se pudo agregar una foto a ${place.name}:`, error);
-                    showToast(error.message || 'No se pudo agregar la foto.');
+                    console.error(`No se pudieron agregar fotos a ${place.name}:`, error);
+                    showToast(error.message || 'No se pudieron agregar las fotos.');
                     addPhotoButton.disabled = false;
-                    addPhotoButton.textContent = 'Agregar foto';
+                    addPhotoButton.textContent = 'Agregar fotos';
                 } finally {
                     addPhotoInput.value = '';
                 }
@@ -1498,14 +1631,25 @@ reminderCancel.addEventListener('click', () => {
 
 placePhotoInput.addEventListener('change', () => {
     if (previewPhotoUrl) URL.revokeObjectURL(previewPhotoUrl);
-    const file = placePhotoInput.files[0];
-    if (!file) {
+    const files = Array.from(placePhotoInput.files || []);
+    if (files.length > MAX_PLACE_PHOTOS) {
+        showToast(`Puedes agregar hasta ${MAX_PLACE_PHOTOS} fotos por lugar.`);
+        placePhotoInput.value = '';
+        placePhotoCount.textContent = '';
         placePhotoPreview.hidden = true;
         placePhotoPreview.removeAttribute('src');
         previewPhotoUrl = null;
         return;
     }
-    previewPhotoUrl = URL.createObjectURL(file);
+    if (!files.length) {
+        placePhotoPreview.hidden = true;
+        placePhotoPreview.removeAttribute('src');
+        placePhotoCount.textContent = '';
+        previewPhotoUrl = null;
+        return;
+    }
+    placePhotoCount.textContent = `${files.length} foto${files.length === 1 ? '' : 's'} seleccionada${files.length === 1 ? '' : 's'}`;
+    previewPhotoUrl = URL.createObjectURL(files[0]);
     placePhotoPreview.src = previewPhotoUrl;
     placePhotoPreview.hidden = false;
 });
@@ -1514,35 +1658,43 @@ placeForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const name = document.querySelector('#place-name').value.trim();
     const date = document.querySelector('#place-date').value;
-    const file = placePhotoInput.files[0];
-    if (!name || !date || !file) {
-        showToast('Agrega el nombre, la fecha y una foto del lugar.');
+    const files = Array.from(placePhotoInput.files || []);
+    if (!name || !date || !files.length) {
+        showToast('Agrega el nombre, la fecha y al menos una foto del lugar.');
+        return;
+    }
+    if (files.length > MAX_PLACE_PHOTOS) {
+        showToast(`Puedes agregar hasta ${MAX_PLACE_PHOTOS} fotos por lugar.`);
         return;
     }
 
     const submitButton = placeForm.querySelector('button[type="submit"]');
     submitButton.disabled = true;
-    let photo;
+    const id = `place-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    let photos = [];
     try {
-        photo = await compressPlacePhoto(file);
+        for (const file of files) photos.push(await compressPlacePhoto(file));
+        await assertPlacePhotoBatchFits(id, photos);
     } catch (error) {
-        console.error('No se pudo preparar la foto del lugar:', error);
-        showToast(error.message || 'No se pudo preparar la foto elegida.');
+        console.error('No se pudieron preparar las fotos del lugar:', error);
+        showToast(error.message || 'No se pudieron preparar las fotos elegidas.');
         submitButton.disabled = false;
         return;
     }
 
     const place = {
-        id: `place-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        id,
         name,
         date,
         note: document.querySelector('#place-note').value.trim(),
-        photo
+        photo: photos[0],
+        additionalPhotos: photos.slice(1)
     };
     try {
         await savePlace(place);
         placeForm.reset();
         document.querySelector('#place-date').value = getLocalDateKey();
+        placePhotoCount.textContent = '';
         if (previewPhotoUrl) URL.revokeObjectURL(previewPhotoUrl);
         previewPhotoUrl = null;
         placePhotoPreview.hidden = true;
@@ -1709,11 +1861,56 @@ if ('serviceWorker' in navigator) {
 document.querySelector('#place-date').value = getLocalDateKey();
 renderDailyQuestion();
 updateAnniversaryStatus(anniversaryDateInput.value);
-renderPlaces();
-renderMemories();
+const initialContentReady = Promise.allSettled([renderPlaces(), renderMemories()]);
 if (pickedDateId) {
     const pickedDate = [...DATE_IDEAS, ...customDates].find((idea) => idea.id === pickedDateId);
     if (pickedDate) datePickStatus.textContent = `Plan elegido: ${pickedDate.title}. ¡Ya tienen una próxima cita pendiente!`;
 }
 renderDates();
 loadCloudConfig();
+
+const loadingScreen = document.querySelector('#loading-screen');
+const minimumLoadingTime = new Promise((resolve) => setTimeout(resolve, 500));
+Promise.all([initialContentReady, minimumLoadingTime]).then(() => {
+    loadingScreen.classList.add('is-hidden');
+    window.setTimeout(() => loadingScreen.remove(), 450);
+});
+window.setTimeout(() => loadingScreen?.classList.add('is-hidden'), 3000);
+
+
+const sectionMenuToggle = document.querySelector('#section-menu-toggle');
+const sectionMenu = document.querySelector('#section-menu');
+const appViews = [...document.querySelectorAll('[data-app-view]')];
+
+function closeSectionMenu() {
+    sectionMenu.hidden = true;
+    sectionMenuToggle.setAttribute('aria-expanded', 'false');
+}
+
+sectionMenuToggle.addEventListener('click', () => {
+    const isOpening = sectionMenu.hidden;
+    sectionMenu.hidden = !isOpening;
+    sectionMenuToggle.setAttribute('aria-expanded', String(isOpening));
+});
+
+sectionMenu.addEventListener('click', (event) => {
+    const target = event.target.closest('[data-view-target]');
+    if (!target) return;
+    const selectedView = target.dataset.viewTarget;
+    appViews.forEach((view) => {
+        view.hidden = view.dataset.appView !== selectedView;
+    });
+    sectionMenu.querySelectorAll('[data-view-target]').forEach((button) => {
+        if (button === target) button.setAttribute('aria-current', 'page');
+        else button.removeAttribute('aria-current');
+    });
+    closeSectionMenu();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+document.addEventListener('click', (event) => {
+    if (!event.target.closest('.section-nav-wrap')) closeSectionMenu();
+});
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeSectionMenu();
+});

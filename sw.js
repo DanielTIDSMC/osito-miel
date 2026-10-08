@@ -1,4 +1,4 @@
-const CACHE_NAME = 'osito-miel-shell-v15';
+const CACHE_NAME = 'osito-miel-shell-v16';
 const APP_SHELL = [
     './',
     './index.html',
@@ -98,4 +98,16 @@ self.addEventListener('notificationclick', (event) => {
                 return self.clients.openWindow(targetUrl);
             })
     );
+});
+
+
+self.addEventListener('push', (event) => {
+    let payload = {};
+    try { payload = event.data ? event.data.json() : {}; } catch {}
+    event.waitUntil(self.registration.showNotification(payload.title || 'Un poquito de miel para ti', {
+        body: payload.body || 'Osito subi? algo nuevo a sus recuerdos.',
+        icon: './assets/icons/icon.svg',
+        badge: './assets/icons/icon.svg',
+        data: { url: new URL(payload.url || './', self.location.href).href }
+    }));
 });

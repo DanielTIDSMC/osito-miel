@@ -1,0 +1,4 @@
+node_modules/
+data/
+*.push-subscriptions.json
+*.vapid.json

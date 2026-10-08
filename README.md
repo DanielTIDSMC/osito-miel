@@ -32,3 +32,10 @@ La sincronización es opcional y usa el backend Node incluido en `backend/`, com
 La conexión usa HTTPS y requiere la clave compartida para leer o escribir el estado. Railway conserva una copia de los datos enviados en el volumen configurado; no se debe considerar un servicio cifrado de extremo a extremo. Sin internet, los cambios permanecen localmente y se sincronizan cuando vuelva la conexión. No desconectes ni borres los datos del navegador antes de que la app indique que terminó de sincronizar.
 
 La API se puede probar con `npm run test:api`.
+
+
+## Fotos multiples y avisos push
+
+Cada lugar admite hasta cinco fotos. Las fotos se comprimen en el dispositivo, con un maximo de 2 MB por foto y 7 MB en total al sincronizar.
+
+En Ajustes, activa las notificaciones push una vez en cada celular. El navegador pedira permiso; cuando un dispositivo sincronice un cambio, los otros recibiran un aviso. Las claves VAPID y suscripciones se guardan junto a DATA_FILE, por lo que el volumen persistente de Railway debe seguir montado en /data.

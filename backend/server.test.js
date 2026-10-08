@@ -78,6 +78,25 @@ test('saves shared state and rejects stale writes without losing data', async ()
     assert.equal(disk.revision, 1);
 });
 
+test('protects push registration and only accepts valid subscriptions', async () => {
+    const headers = {
+        Authorization: 'Bearer ' + roomPassword,
+        'Content-Type': 'application/json',
+        Origin: 'https://danieltidsmc.github.io'
+    };
+    const unauthorized = await fetch(baseUrl + '/api/push/public-key');
+    assert.equal(unauthorized.status, 401);
+    const keyResponse = await fetch(baseUrl + '/api/push/public-key', { headers });
+    assert.equal(keyResponse.status, 200);
+    const { publicKey } = await keyResponse.json();
+    assert.ok(publicKey.length > 40);
+    const invalidSubscription = await fetch(baseUrl + '/api/push/subscriptions', {
+        method: 'POST', headers,
+        body: JSON.stringify({ deviceId: 'test-device', subscription: { endpoint: 'https://push.example.test/a', keys: {} } })
+    });
+    assert.equal(invalidSubscription.status, 400);
+});
+
 test('rejects invalid imported-place date overrides', async () => {
     const headers = {
         Authorization: `Bearer ${roomPassword}`,
@@ -123,6 +142,17 @@ test('accepts shared places without an attached photo', async () => {
     assert.equal(response.status, 200);
     const saved = await response.json();
     assert.equal(saved.data.places[0].photo, null);
+});
+
+test('limits each shared place to five photos', async () => {
+    const headers = { Authorization: 'Bearer ' + roomPassword, 'Content-Type': 'application/json' };
+    const current = await fetch(baseUrl + '/api/state', { headers }).then((response) => response.json());
+    const photos = Array.from({ length: 6 }, () => 'data:image/jpeg;base64,AAAA');
+    const response = await fetch(baseUrl + '/api/state', {
+        method: 'PUT', headers,
+        body: JSON.stringify({ ...current, data: { ...current.data, places: [{ id: 'too-many', name: 'Place', date: '', note: '', photo: photos[0], additionalPhotos: photos.slice(1) }] } })
+    });
+    assert.equal(response.status, 400);
 });
 
 test('rejects non-image and oversized album data', async () => {
