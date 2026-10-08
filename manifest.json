@@ -1,0 +1,22 @@
+{
+  "id": "./",
+  "name": "Un poquito de miel para ti",
+  "short_name": "Poquito de miel",
+  "description": "Un rinconcito de amor, sorpresas y recuerdos para mi Osito Pooh.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fff8eb",
+  "theme_color": "#fff8eb",
+  "categories": ["lifestyle", "entertainment"],
+  "icons": [
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
