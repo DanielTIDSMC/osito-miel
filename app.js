@@ -2104,6 +2104,8 @@ window.setTimeout(() => loadingScreen?.classList.add('is-hidden'), 3000);
 const sectionMenuToggle = document.querySelector('#section-menu-toggle');
 const sectionMenu = document.querySelector('#section-menu');
 const appViews = [...document.querySelectorAll('[data-app-view]')];
+const recommendationFilters = document.querySelector('#recommendation-filters');
+const recommendationCards = [...document.querySelectorAll('.recommendation-card')];
 
 function closeSectionMenu() {
     sectionMenu.hidden = true;
@@ -2114,6 +2116,20 @@ sectionMenuToggle.addEventListener('click', () => {
     const isOpening = sectionMenu.hidden;
     sectionMenu.hidden = !isOpening;
     sectionMenuToggle.setAttribute('aria-expanded', String(isOpening));
+});
+
+recommendationFilters?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-recommendation-filter]');
+    if (!button) return;
+    const category = button.dataset.recommendationFilter;
+    recommendationFilters.querySelectorAll('[data-recommendation-filter]').forEach((filter) => {
+        const selected = filter === button;
+        filter.classList.toggle('is-active', selected);
+        filter.setAttribute('aria-pressed', String(selected));
+    });
+    recommendationCards.forEach((card) => {
+        card.hidden = category !== 'all' && card.dataset.recommendationCategory !== category;
+    });
 });
 
 function showAppView(selectedView) {
@@ -2135,6 +2151,11 @@ document.querySelector('.quick-access').addEventListener('click', (event) => {
     const target = event.target.closest('[data-view-target]');
     if (target) showAppView(target.dataset.viewTarget);
 });
+
+const requestedInitialView = new URLSearchParams(window.location.search).get('section');
+if (appViews.some((view) => view.dataset.appView === requestedInitialView)) {
+    showAppView(requestedInitialView);
+}
 
 syncIndicator.addEventListener('click', () => showAppView('settings'));
 placesSearch.addEventListener('input', applyPlaceFilters);

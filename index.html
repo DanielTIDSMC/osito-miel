@@ -10,8 +10,8 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="assets/icons/icon.svg">
-    <link rel="stylesheet" href="styles.css?v=enhancements-v1">
-    <script src="app.js?v=enhancements-v1" defer></script>
+    <link rel="stylesheet" href="styles.css?v=regional-recommendations-v1">
+    <script src="app.js?v=regional-recommendations-v1" defer></script>
 </head>
 <body>
     <div id="loading-screen" class="loading-screen" role="status" aria-live="polite">
@@ -34,6 +34,7 @@
                     <button type="button" data-view-target="home" aria-current="page"><span aria-hidden="true">♡</span> Inicio</button>
                     <button type="button" data-view-target="memories"><span aria-hidden="true">✿</span> Recuerdos</button>
                     <button type="button" data-view-target="places"><span aria-hidden="true">&#128205;</span> Lugares</button>
+                    <button type="button" data-view-target="recommendations"><span aria-hidden="true">&#10024;</span> Recomendados</button>
                     <button type="button" data-view-target="plans"><span aria-hidden="true">✦</span> Planes</button>
                     <button type="button" data-view-target="together"><span aria-hidden="true">♡</span> Para nosotros</button>
                     <button type="button" data-view-target="settings"><span aria-hidden="true">⚙</span> Ajustes</button>
@@ -213,6 +214,81 @@
                 Las fotos precargadas forman parte del sitio público de GitHub Pages; cualquiera que tenga su enlace podría verlas.
                 Las fotos nuevas se guardan en este dispositivo y solo se comparten al conectar la sincronización privada.
             </p>
+            </section>
+        </div>
+        <div class="app-view" data-app-view="recommendations" hidden>
+            <section class="recommendations-section" aria-labelledby="recommendations-title">
+                <div class="section-label">
+                    <span class="section-icon" aria-hidden="true">&#10024;</span>
+                    <div>
+                        <p class="eyebrow">ESCAPADITAS CERQUITA DE CÓRDOBA</p>
+                        <h2 id="recommendations-title">Planes bonitos para descubrir juntos</h2>
+                    </div>
+                </div>
+                <p class="recommendations-intro">Ideas elegidas para una cita, una tarde tranquila o una pequeña aventura por las Altas Montañas. Las distancias son aproximadas; confirmen horarios y acceso antes de salir.</p>
+                <div id="recommendation-filters" class="recommendation-filters" role="group" aria-label="Filtrar recomendaciones">
+                    <button class="recommendation-filter is-active" type="button" data-recommendation-filter="all" aria-pressed="true">Todas</button>
+                    <button class="recommendation-filter" type="button" data-recommendation-filter="Café y comida" aria-pressed="false">Café y comida</button>
+                    <button class="recommendation-filter" type="button" data-recommendation-filter="Historia" aria-pressed="false">Historia</button>
+                    <button class="recommendation-filter" type="button" data-recommendation-filter="Naturaleza" aria-pressed="false">Naturaleza</button>
+                    <button class="recommendation-filter" type="button" data-recommendation-filter="Pueblitos" aria-pressed="false">Pueblitos</button>
+                </div>
+                <div class="recommendation-grid">
+                    <article class="recommendation-card" data-recommendation-category="Café y comida">
+                        <span class="recommendation-emoji" aria-hidden="true">☕</span><span class="recommendation-category">Café y comida · Córdoba</span>
+                        <h3>Museo del Café y centro histórico</h3>
+                        <p>Conozcan el camino del café de la mata a la taza y terminen la visita con una cata. Después pueden pasear por el centro y buscar su cafecito favorito.</p>
+                        <div class="recommendation-links"><a href="https://www.google.com/maps/search/?api=1&query=Museo+del+Caf%C3%A9+C%C3%B3rdoba+Veracruz" target="_blank" rel="noopener noreferrer">Ver mapa ↗</a><a href="https://turismo.cordoba.gob.mx/" target="_blank" rel="noopener noreferrer">Turismo de Córdoba ↗</a></div>
+                    </article>
+                    <article class="recommendation-card" data-recommendation-category="Historia">
+                        <span class="recommendation-emoji" aria-hidden="true">🏛️</span><span class="recommendation-category">Historia · Córdoba</span>
+                        <h3>Ex Hacienda San Francisco Toxpan</h3>
+                        <p>Recorran este antiguo ingenio, conozcan el Museo de la Zafra y dense tiempo para ver las actividades culturales del recinto.</p>
+                        <div class="recommendation-links"><a href="https://www.google.com/maps/search/?api=1&query=Ex+Hacienda+San+Francisco+Toxpan+C%C3%B3rdoba+Veracruz" target="_blank" rel="noopener noreferrer">Ver mapa ↗</a><a href="https://turismo.cordoba.gob.mx/" target="_blank" rel="noopener noreferrer">Turismo de Córdoba ↗</a></div>
+                    </article>
+                    <article class="recommendation-card" data-recommendation-category="Café y comida">
+                        <span class="recommendation-emoji" aria-hidden="true">🌿</span><span class="recommendation-category">Café y comida · Córdoba y alrededores</span>
+                        <h3>Una visita a una finca cafetalera</h3>
+                        <p>Elijan una finca de la región, pregunten por recorrido y degustación, y conviertan la visita en una cita para probar y comparar cafés.</p>
+                        <div class="recommendation-links"><a href="https://www.google.com/maps/search/?api=1&query=finca+cafetalera+C%C3%B3rdoba+Veracruz" target="_blank" rel="noopener noreferrer">Buscar fincas en el mapa ↗</a><a href="https://turismo.cordoba.gob.mx/" target="_blank" rel="noopener noreferrer">Opciones locales ↗</a></div>
+                    </article>
+                    <article class="recommendation-card" data-recommendation-category="Naturaleza">
+                        <span class="recommendation-emoji" aria-hidden="true">🌺</span><span class="recommendation-category">Naturaleza · Fortín de las Flores</span>
+                        <h3>Viveros, bonsáis y cafetal</h3>
+                        <p>Exploren los viveros y el Museo del Bonsái; si reservan con anticipación, pueden sumar un recorrido cafetalero. Buena opción para una tarde entre plantas y fotos.</p>
+                        <div class="recommendation-links"><a href="https://www.google.com/maps/search/?api=1&query=Museo+del+Bonsai+Fort%C3%ADn+de+las+Flores+Veracruz" target="_blank" rel="noopener noreferrer">Ver mapa ↗</a><a href="https://www.veracruz.gob.mx/turismo/wp-content/uploads/sites/15/2025/03/2025-Rutas-Turisticas-FITUR.pdf" target="_blank" rel="noopener noreferrer">Ruta turística de Fortín ↗</a></div>
+                    </article>
+                    <article class="recommendation-card" data-recommendation-category="Historia">
+                        <span class="recommendation-emoji" aria-hidden="true">📜</span><span class="recommendation-category">Historia · Yanga, a unos 14 km</span>
+                        <h3>Conocer la historia de Yanga</h3>
+                        <p>Una salida para aprender sobre la historia del Primer Pueblo Libre de América y recorrer su centro con calma.</p>
+                        <div class="recommendation-links"><a href="https://www.google.com/maps/search/?api=1&query=Yanga+Veracruz+centro" target="_blank" rel="noopener noreferrer">Ver mapa ↗</a><a href="https://www.veracruz.gob.mx/turismo/regiones-turisticas/" target="_blank" rel="noopener noreferrer">Regiones turísticas de Veracruz ↗</a></div>
+                    </article>
+                    <article class="recommendation-card" data-recommendation-category="Naturaleza">
+                        <span class="recommendation-emoji" aria-hidden="true">🦋</span><span class="recommendation-category">Naturaleza · Orizaba</span>
+                        <h3>Paseo del Río y Reserva Animal</h3>
+                        <p>Caminen juntos junto al río, crucen sus puentes y disfruten el paseo arbolado. El recorrido oficial señala alrededor de 5 km, así que lleven zapatos cómodos.</p>
+                        <div class="recommendation-links"><a href="https://www.google.com/maps/search/?api=1&query=Paseo+del+Rio+Reserva+Animal+Orizaba" target="_blank" rel="noopener noreferrer">Ver mapa ↗</a><a href="https://www.orizaba.travel/paseo-del-rio/" target="_blank" rel="noopener noreferrer">Sitio oficial ↗</a></div>
+                    </article>
+                    <article class="recommendation-card" data-recommendation-category="Naturaleza">
+                        <span class="recommendation-emoji" aria-hidden="true">🚠</span><span class="recommendation-category">Naturaleza · Orizaba</span>
+                        <h3>Teleférico y Cerro del Borrego</h3>
+                        <p>Suban para contemplar la ciudad desde las alturas y paseen por el ecoparque. Ideal para una cita de aventura suave y fotos panorámicas.</p>
+                        <div class="recommendation-links"><a href="https://www.google.com/maps/search/?api=1&query=Telef%C3%A9rico+de+Orizaba" target="_blank" rel="noopener noreferrer">Ver mapa ↗</a><a href="https://www.orizaba.travel/" target="_blank" rel="noopener noreferrer">Turismo de Orizaba ↗</a></div>
+                    </article>
+                    <article class="recommendation-card" data-recommendation-category="Pueblitos">
+                        <span class="recommendation-emoji" aria-hidden="true">🥐</span><span class="recommendation-category">Pueblitos · Coscomatepec, aprox. 50 min</span>
+                        <h3>Portales, pan de horno y café</h3>
+                        <p>Piérdanse un ratito por el centro, compartan pan tradicional recién hecho y café, y visiten sus portales y talleres locales.</p>
+                        <div class="recommendation-links"><a href="https://www.google.com/maps/search/?api=1&query=Centro+Coscomatepec+Veracruz" target="_blank" rel="noopener noreferrer">Ver mapa ↗</a><a href="https://www.gob.mx/sectur/articulos/coscomatepec-de-bravo-veracruz" target="_blank" rel="noopener noreferrer">Guía de Sectur ↗</a></div>
+                    </article>
+                    <article class="recommendation-card" data-recommendation-category="Pueblitos">
+                        <span class="recommendation-emoji" aria-hidden="true">🌊</span><span class="recommendation-category">Pueblitos · Amatlán de los Reyes</span>
+                        <h3>Tarde tranquila en Laguna del Porvenir</h3>
+                        <p>Cuando haya servicio disponible, pueden dar un paseo en trajinera y probar comida preparada por la comunidad. Confirmen operación antes de ir.</p>
+                        <div class="recommendation-links"><a href="https://www.google.com/maps/search/?api=1&query=Laguna+del+Porvenir+Amatl%C3%A1n+de+los+Reyes" target="_blank" rel="noopener noreferrer">Ver mapa ↗</a><a href="https://turismo.cordoba.gob.mx/" target="_blank" rel="noopener noreferrer">Turismo de Córdoba ↗</a></div>
+                    </article>
+                </div>
             </section>
         </div>
         <div class="app-view" data-app-view="plans" hidden>

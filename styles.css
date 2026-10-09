@@ -483,3 +483,26 @@ h1 span { color: var(--honey-dark); font-style: italic; }
     .photo-viewer-nav { width: 32px; height: 42px; }
     .photo-viewer-stage img { max-height: 70vh; }
 }
+
+.recommendations-section { margin-top: 42px; }
+.recommendations-intro { max-width: 720px; margin: -5px 0 16px; color: var(--soft-ink); font-size: 12px; line-height: 1.7; }
+.recommendation-filters { display: flex; gap: 7px; overflow-x: auto; margin-bottom: 15px; padding: 1px 1px 6px; overscroll-behavior-inline: contain; }
+.recommendation-filter { flex: 0 0 auto; min-height: 35px; padding: 7px 12px; border: 1px solid var(--input-border); border-radius: 99px; background: var(--surface-strong); color: var(--soft-ink); cursor: pointer; font-size: 10px; }
+.recommendation-filter.is-active, .recommendation-filter[aria-pressed="true"] { border-color: var(--honey); background: var(--surface-honey); color: var(--honey-dark); font-weight: 700; }
+.recommendation-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; }
+.recommendation-card { display: grid; grid-template-columns: 40px 1fr; align-content: start; align-items: center; column-gap: 10px; min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface-strong); box-shadow: 0 8px 22px var(--card-shadow); }
+.recommendation-card[hidden] { display: none; }
+.recommendation-emoji { grid-row: 1 / span 2; display: grid; width: 40px; height: 40px; place-items: center; border-radius: 12px; background: var(--surface-honey); font-size: 21px; }
+.recommendation-category { color: var(--honey-dark); font-size: 9px; font-weight: 700; line-height: 1.5; }
+.recommendation-card h3 { grid-column: 1 / -1; margin: 11px 0 6px; font-size: 16px; line-height: 1.3; }
+.recommendation-card p { grid-column: 1 / -1; min-height: 65px; margin: 0 0 12px; color: var(--soft-ink); font-size: 11px; line-height: 1.65; }
+.recommendation-links { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 7px 13px; margin-top: auto; }
+.recommendation-links a { color: var(--honey-dark); font-size: 10px; font-weight: 700; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.recommendation-links a:hover { color: var(--ink); }
+@media (max-width: 900px) { .recommendation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) {
+    .recommendations-section { margin-top: 22px; }
+    .recommendation-grid { grid-template-columns: 1fr; gap: 10px; }
+    .recommendation-card { padding: 15px; }
+    .recommendation-card p { min-height: 0; }
+}
