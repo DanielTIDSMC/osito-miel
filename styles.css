@@ -368,8 +368,14 @@ h1 span { color: var(--honey-dark); font-style: italic; }
     .love-note, .date-plans, .places-section, .couple-question-section, .anniversary-section, .reminder-section, .sync-section, .memory-section { margin-top: 31px; }
     .note-grid { grid-template-columns: 1fr; gap: 9px; }
     .date-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
-    .places-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+    .places-grid { grid-template-columns: 1fr; gap: 12px; }
     .place-card img { height: 140px; }
+    .place-card-ratings { grid-template-columns: 1fr; gap: 7px; }
+    .place-card-rating { gap: 6px; font-size: 11px; }
+    .place-card-rating dd { gap: 5px; }
+    .place-rating-stars { gap: 1px; letter-spacing: normal; }
+    .place-rating-star { display: grid; width: 25px; height: 30px; place-items: center; font-size: 19px; }
+    .place-rating-score { min-width: 25px; font-size: 10px; text-align: right; }
     .date-art { min-height: 110px; }
     .date-art-emoji { font-size: 40px; }
     .date-copy { padding: 11px 10px 12px; }
