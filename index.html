@@ -10,8 +10,8 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="assets/icons/icon.svg">
-    <link rel="stylesheet" href="styles.css?v=regional-recommendations-v1">
-    <script src="app.js?v=regional-recommendations-v1" defer></script>
+    <link rel="stylesheet" href="styles.css?v=bear-accessories-v1">
+    <script src="app.js?v=bear-accessories-v1" defer></script>
 </head>
 <body>
     <div id="loading-screen" class="loading-screen" role="status" aria-live="polite">
@@ -89,8 +89,37 @@
                     <path d="M251 263c0-8 7-15 14-15s14 7 14 15c0 8-6 12-14 12s-14-4-14-12z" fill="#fff4d7"/>
                     <path d="M259 265h12m-6-6v13" stroke="#bd7950" stroke-width="2.5" stroke-linecap="round"/>
                     <path d="M180 36c3-8 6-12 6-12s3 4 6 12c8 3 12 6 12 6s-4 3-12 6c-3 8-6 12-6 12s-3-4-6-12c-8-3-12-6-12-6s4-3 12-6z" fill="#eabf66"/>
+                    <g class="bear-accessory" data-bear-art="scarf" aria-hidden="true">
+                        <path d="M119 231Q165 251 214 231" fill="none" stroke="#9d5d73" stroke-width="12" stroke-linecap="round"/>
+                        <path d="M137 240l-2 23 14-9 5-12" fill="#9d5d73" stroke="#784632" stroke-width="3" stroke-linejoin="round"/>
+                        <path d="M122 230Q166 247 208 231" fill="none" stroke="#efb4c1" stroke-width="2" stroke-linecap="round"/>
+                    </g>
+                    <g class="bear-accessory" data-bear-art="hat" aria-hidden="true">
+                        <path d="M145 60 184 5l39 55z" fill="#d77d82" stroke="#784632" stroke-width="4" stroke-linejoin="round"/>
+                        <path d="m157 43 54 0" stroke="#f4cc77" stroke-width="8"/>
+                        <circle cx="184" cy="7" r="6" fill="#f4cc77" stroke="#784632" stroke-width="2"/>
+                    </g>
+                    <g class="bear-accessory" data-bear-art="glasses" aria-hidden="true">
+                        <circle cx="154" cy="151" r="14" fill="#fff4ed" fill-opacity=".22" stroke="#b85d73" stroke-width="4"/>
+                        <circle cx="217" cy="151" r="14" fill="#fff4ed" fill-opacity=".22" stroke="#b85d73" stroke-width="4"/>
+                        <path d="M168 151q17-12 35 0" fill="none" stroke="#b85d73" stroke-width="4" stroke-linecap="round"/>
+                        <path d="M139 147l-8-5m92 5 8-5" fill="none" stroke="#b85d73" stroke-width="3" stroke-linecap="round"/>
+                    </g>
                 </svg>
                 <span class="little-note">un abrazo<br>en forma de miel</span>
+            </div>
+        </section>
+
+        <section class="bear-wardrobe" aria-labelledby="bear-wardrobe-title">
+            <div class="bear-wardrobe-copy">
+                <p id="bear-wardrobe-title" class="bear-wardrobe-title">Un osito que crece con ustedes</p>
+                <p id="bear-wardrobe-progress" class="bear-wardrobe-progress" aria-live="polite">Guarden recuerdos y lugares para desbloquear accesorios.</p>
+            </div>
+            <div id="bear-wardrobe-options" class="bear-wardrobe-options" role="group" aria-label="Elegir accesorio del osito">
+                <button type="button" data-bear-accessory="none" aria-pressed="true">Original</button>
+                <button type="button" data-bear-accessory="scarf" aria-pressed="false">Bufandita</button>
+                <button type="button" data-bear-accessory="hat" aria-pressed="false">Gorrito</button>
+                <button type="button" data-bear-accessory="glasses" aria-pressed="false">Lentes de corazón</button>
             </div>
         </section>
 

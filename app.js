@@ -14,6 +14,7 @@ const NOTES = [
 ];
 
 const MEMORIES_KEY = 'osito-miel.memories.v1';
+const BEAR_ACCESSORY_KEY = 'osito-miel.bear-accessory.v1';
 const THEME_KEY = 'osito-miel.theme.v1';
 const REMINDER_KEY = 'osito-miel.reminder-time.v1';
 const DATE_IDEAS_KEY = 'osito-miel.date-ideas.v1';
@@ -138,6 +139,7 @@ const pushNotificationsStatus = document.querySelector('#push-notifications-stat
 
 let activeDateFilter = 'Todas';
 let activePlaceFilter = 'all';
+let currentPlaceCount = 0;
 let photoViewerItems = [];
 let photoViewerObjectUrl = null;
 let photoViewerTouchStartX = null;
@@ -187,6 +189,45 @@ function showToast(message) {
     toast.classList.add('visible');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove('visible'), 3200);
+}
+
+function renderBearWardrobe() {
+    const options = document.querySelector('#bear-wardrobe-options');
+    if (!options) return;
+
+    const accessoryRules = {
+        none: { label: 'Original', unlocked: true },
+        scarf: { label: 'Bufandita', unlocked: memories.length >= 1, goal: 'guarda 1 recuerdo' },
+        hat: { label: 'Gorrito', unlocked: memories.length >= 3, goal: 'guarda 3 recuerdos' },
+        glasses: { label: 'Lentes de corazón', unlocked: currentPlaceCount >= 1, goal: 'agrega un lugar visitado' }
+    };
+    let selected = 'none';
+    try {
+        selected = localStorage.getItem(BEAR_ACCESSORY_KEY) || 'none';
+    } catch (error) {
+        console.error('No se pudo leer el accesorio del osito:', error);
+    }
+    if (!accessoryRules[selected]?.unlocked) selected = 'none';
+
+    options.querySelectorAll('[data-bear-accessory]').forEach((button) => {
+        const accessory = button.dataset.bearAccessory;
+        const rule = accessoryRules[accessory];
+        if (!rule) return;
+        button.disabled = !rule.unlocked;
+        button.textContent = rule.unlocked ? rule.label : `🔒 ${rule.label} · ${rule.goal}`;
+        button.setAttribute('aria-pressed', String(selected === accessory));
+        button.classList.toggle('is-selected', selected === accessory);
+    });
+
+    document.querySelectorAll('[data-bear-art]').forEach((art) => {
+        art.classList.toggle('is-visible', art.dataset.bearArt === selected);
+    });
+
+    const progress = document.querySelector('#bear-wardrobe-progress');
+    if (memories.length < 1) progress.textContent = 'Guarda 1 recuerdo para desbloquear la bufandita.';
+    else if (currentPlaceCount < 1) progress.textContent = 'La bufandita ya es suya. Agrega un lugar visitado para desbloquear los lentes de corazón.';
+    else if (memories.length < 3) progress.textContent = '¡Lentes desbloqueados! Guarda 3 recuerdos para ganar el gorrito.';
+    else progress.textContent = '¡Ya desbloquearon todos los accesorios! Elijan el favorito del osito.';
 }
 
 function showSurprise() {
@@ -1340,6 +1381,8 @@ async function renderPlaces() {
         const places = Array.from(placesMap.values())
             .sort((first, second) => (second.date || '').localeCompare(first.date || ''));
 
+        currentPlaceCount = places.length;
+        renderBearWardrobe();
         placesCount.textContent = places.length + ' lugares en su \u00e1lbum';
         const ratingValues = places.flatMap((place) => Object.values(place.ratings || {}).filter((score) => Number.isInteger(score) && score >= 1 && score <= 5));
         const ratedPlaceCount = places.filter((place) => Object.values(place.ratings || {}).some((score) => Number.isInteger(score) && score >= 1 && score <= 5)).length;
@@ -1780,10 +1823,22 @@ function renderMemories() {
         memoryList.append(item);
     });
     memoryEmpty.hidden = memories.length > 0;
+    renderBearWardrobe();
 }
 
 document.querySelector('#surprise-button').addEventListener('click', showSurprise);
 document.querySelector('#another-button').addEventListener('click', showSurprise);
+document.querySelector('#bear-wardrobe-options').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-bear-accessory]');
+    if (!button || button.disabled) return;
+    try {
+        localStorage.setItem(BEAR_ACCESSORY_KEY, button.dataset.bearAccessory);
+        renderBearWardrobe();
+    } catch (error) {
+        console.error('No se pudo guardar el accesorio del osito:', error);
+        showToast('No se pudo guardar el accesorio elegido en este dispositivo.');
+    }
+});
 document.querySelector('#theme-toggle').addEventListener('click', () => {
     const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     applyTheme(theme);
