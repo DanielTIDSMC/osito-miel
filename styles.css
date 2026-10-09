@@ -522,3 +522,46 @@ h1 span { color: var(--honey-dark); font-style: italic; }
     .bear-wardrobe-options { justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; padding: 1px 1px 5px; overscroll-behavior-inline: contain; }
     .bear-wardrobe-options button { flex: 0 0 auto; }
 }
+
+.memory-album-section, .pooh-ideas-section { margin-top: 42px; }
+.memory-album-intro, .pooh-ideas-intro { max-width: 700px; margin: -5px 0 10px; color: var(--soft-ink); font-size: 12px; line-height: 1.7; }
+.memory-album-count, .pooh-ideas-count { margin: 0 0 10px; color: var(--honey-dark); font-size: 10px; font-weight: 700; }
+.memory-album-filters { display: flex; gap: 7px; overflow-x: auto; margin-bottom: 14px; padding: 1px 1px 5px; }
+.memory-album-filter { flex: 0 0 auto; min-height: 33px; padding: 6px 12px; border: 1px solid var(--input-border); border-radius: 99px; background: var(--surface-strong); color: var(--soft-ink); cursor: pointer; font-size: 10px; }
+.memory-album-filter.is-active { border-color: var(--honey); background: var(--surface-honey); color: var(--honey-dark); font-weight: 700; }
+.memory-album-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 12px; }
+.album-photo-card { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-strong); box-shadow: 0 7px 20px var(--card-shadow); }
+.album-photo-card[hidden], .album-note-card[hidden] { display: none; }
+.album-photo-card img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; cursor: zoom-in; }
+.album-photo-card img:focus-visible { outline: 3px solid var(--honey); outline-offset: -3px; }
+.album-card-copy { display: grid; gap: 3px; padding: 9px 10px 10px; }
+.album-card-copy h3 { overflow: hidden; margin: 0; font-size: 11px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.album-card-copy time, .album-note-card time { color: var(--soft-ink); font-size: 9px; }
+.album-note-card { display: grid; align-content: start; gap: 8px; min-height: 180px; padding: 17px; border: 1px solid var(--tile-pink-border); border-radius: 12px; background: var(--surface-blush); box-shadow: 0 7px 20px var(--card-shadow); }
+.album-note-icon { color: #bd7770; font-size: 21px; }
+.album-note-card h3 { margin: 0; font-size: 12px; }
+.album-note-card p { margin: 0; color: var(--soft-ink); font-family: "Fraunces", Georgia, serif; font-size: 14px; line-height: 1.5; }
+.memory-album-empty { margin: 0; padding: 28px 18px; border: 1px dashed var(--memory-border); border-radius: 12px; color: var(--soft-ink); font-size: 12px; text-align: center; }
+.memory-album-empty[hidden] { display: none; }
+.pooh-ideas-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.pooh-idea-card { display: grid; align-content: start; justify-items: start; gap: 8px; min-width: 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-strong); box-shadow: 0 7px 20px var(--card-shadow); }
+.pooh-idea-card:nth-child(2) { background: var(--surface-honey); border-color: var(--hero-border); }
+.pooh-idea-card:nth-child(3) { background: var(--surface-leaf); border-color: var(--tile-sage-border); }
+.pooh-idea-icon { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 13px; background: var(--surface-honey); font-size: 22px; }
+.pooh-idea-card:nth-child(2) .pooh-idea-icon { background: var(--surface-strong); }
+.pooh-idea-kicker { margin: 1px 0 0; color: var(--honey-dark); font-size: 8px; font-weight: 700; letter-spacing: 1px; }
+.pooh-idea-card h3 { margin: 0; font-size: 16px; line-height: 1.35; }
+.pooh-idea-card > p:not(.pooh-idea-kicker) { margin: 0 0 5px; color: var(--soft-ink); font-size: 11px; line-height: 1.65; }
+.pooh-idea-card button { min-height: 34px; padding: 7px 11px; border: 1px solid var(--input-border); border-radius: 99px; background: var(--surface-strong); color: var(--honey-dark); cursor: pointer; font-size: 10px; font-weight: 700; }
+.pooh-idea-card button.is-saved { border-color: var(--honey); background: var(--surface-honey); }
+.pooh-ideas-note { margin: 12px 0 0; color: var(--soft-ink); font-size: 9px; }
+@media (max-width: 850px) { .memory-album-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 600px) {
+    .memory-album-section, .pooh-ideas-section { margin-top: 22px; }
+    .memory-album-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .album-note-card { grid-column: 1 / -1; min-height: 0; }
+    .album-card-copy { padding: 8px; }
+    .album-card-copy h3 { font-size: 10px; }
+    .pooh-ideas-grid { grid-template-columns: 1fr; gap: 9px; }
+    .pooh-idea-card { padding: 15px; }
+}

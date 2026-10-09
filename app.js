@@ -14,6 +14,7 @@ const NOTES = [
 ];
 
 const MEMORIES_KEY = 'osito-miel.memories.v1';
+const POOH_IDEAS_KEY = 'osito-miel.pooh-ideas.v1';
 const BEAR_ACCESSORY_KEY = 'osito-miel.bear-accessory.v1';
 const THEME_KEY = 'osito-miel.theme.v1';
 const REMINDER_KEY = 'osito-miel.reminder-time.v1';
@@ -140,6 +141,9 @@ const pushNotificationsStatus = document.querySelector('#push-notifications-stat
 let activeDateFilter = 'Todas';
 let activePlaceFilter = 'all';
 let currentPlaceCount = 0;
+let albumPlaces = [];
+let albumPhotoUrls = [];
+let activeAlbumFilter = 'all';
 let photoViewerItems = [];
 let photoViewerObjectUrl = null;
 let photoViewerTouchStartX = null;
@@ -1381,6 +1385,8 @@ async function renderPlaces() {
         const places = Array.from(placesMap.values())
             .sort((first, second) => (second.date || '').localeCompare(first.date || ''));
 
+        albumPlaces = places;
+        renderMemoryAlbum(albumPlaces);
         currentPlaceCount = places.length;
         renderBearWardrobe();
         placesCount.textContent = places.length + ' lugares en su \u00e1lbum';
@@ -1824,6 +1830,125 @@ function renderMemories() {
     });
     memoryEmpty.hidden = memories.length > 0;
     renderBearWardrobe();
+    renderMemoryAlbum(albumPlaces);
+}
+
+function renderMemoryAlbum(places = albumPlaces) {
+    const grid = document.querySelector('#memory-album-grid');
+    if (!grid) return;
+    albumPhotoUrls.forEach((url) => URL.revokeObjectURL(url));
+    albumPhotoUrls = [];
+    grid.replaceChildren();
+
+    const entries = memories.map((memory) => ({
+        type: 'note',
+        title: 'Una notita para guardar',
+        text: memory.text,
+        date: memory.date
+    }));
+    const photoCount = { value: 0 };
+    places.forEach((place) => {
+        const photos = [
+            ...(place.photo instanceof Blob
+                ? [{ blob: place.photo, alt: `Foto de ${place.name}` }]
+                : (place.photos || [])),
+            ...(place.additionalPhotos || []).map((blob, index) => ({
+                blob,
+                alt: `Foto adicional ${index + 1} de ${place.name}`
+            }))
+        ];
+        if (photos.length) {
+            photoCount.value += photos.length;
+            photos.forEach((photo, index) => entries.push({
+                type: 'photo',
+                title: place.name,
+                text: place.note || '',
+                date: place.date,
+                photos,
+                photo,
+                index
+            }));
+        } else if (place.note) {
+            entries.push({ type: 'note', title: place.name, text: place.note, date: place.date });
+        }
+    });
+    entries.sort((first, second) => new Date(second.date || 0).getTime() - new Date(first.date || 0).getTime());
+
+    const count = document.querySelector('#memory-album-count');
+    count.textContent = `${entries.length} recuerdos · ${photoCount.value} fotos`;
+    const empty = document.querySelector('#memory-album-empty');
+    empty.hidden = entries.length > 0;
+
+    entries.forEach((entry) => {
+        const card = document.createElement('article');
+        card.className = entry.type === 'photo' ? 'album-photo-card' : 'album-note-card';
+        card.dataset.albumType = entry.type;
+        const date = new Date(entry.date);
+        const dateText = entry.date && !Number.isNaN(date.getTime())
+            ? new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' }).format(date)
+            : 'Fecha por confirmar';
+
+        if (entry.type === 'photo') {
+            const image = document.createElement('img');
+            image.src = entry.photo.blob ? URL.createObjectURL(entry.photo.blob) : entry.photo.src;
+            if (entry.photo.blob) albumPhotoUrls.push(image.src);
+            image.alt = entry.photo.alt || `Foto de ${entry.title}`;
+            image.loading = 'lazy';
+            image.tabIndex = 0;
+            image.setAttribute('role', 'button');
+            image.setAttribute('aria-label', `Abrir foto ${entry.index + 1} de ${entry.photos.length} de ${entry.title}`);
+            image.addEventListener('click', () => openPhotoViewer(entry.photos, entry.index, entry.title));
+            image.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openPhotoViewer(entry.photos, entry.index, entry.title);
+                }
+            });
+            const copy = document.createElement('div');
+            copy.className = 'album-card-copy';
+            const title = document.createElement('h3');
+            title.textContent = entry.title;
+            const time = document.createElement('time');
+            time.textContent = dateText;
+            if (entry.date) time.dateTime = entry.date;
+            copy.append(title, time);
+            card.append(image, copy);
+        } else {
+            const icon = document.createElement('span');
+            icon.className = 'album-note-icon';
+            icon.setAttribute('aria-hidden', 'true');
+            icon.textContent = '♡';
+            const title = document.createElement('h3');
+            title.textContent = entry.title;
+            const text = document.createElement('p');
+            text.textContent = entry.text;
+            const time = document.createElement('time');
+            time.textContent = dateText;
+            if (entry.date) time.dateTime = entry.date;
+            card.append(icon, title, text, time);
+        }
+        grid.append(card);
+    });
+
+    grid.querySelectorAll('[data-album-type]').forEach((card) => {
+        card.hidden = activeAlbumFilter !== 'all' && card.dataset.albumType !== activeAlbumFilter;
+    });
+}
+
+function renderPoohIdeas() {
+    const ideaButtons = [...document.querySelectorAll('[data-pooh-idea]')];
+    if (!ideaButtons.length) return;
+    const validIds = new Set(ideaButtons.map((button) => button.dataset.poohIdea));
+    const savedIds = loadStoredList(POOH_IDEAS_KEY, (id) => validIds.has(id));
+    ideaButtons.forEach((button) => {
+        const selected = savedIds.includes(button.dataset.poohIdea);
+        button.setAttribute('aria-pressed', String(selected));
+        button.classList.toggle('is-saved', selected);
+        button.textContent = selected ? '✓ Guardada para después' : '♡ Me gustaría';
+    });
+    document.querySelector('#pooh-ideas-count').textContent = savedIds.length
+        ? `${savedIds.length} idea${savedIds.length === 1 ? '' : 's'} guardada${savedIds.length === 1 ? '' : 's'} para después.`
+        : 'Todavía no han elegido ideas.';
 }
 
 document.querySelector('#surprise-button').addEventListener('click', showSurprise);
@@ -1839,6 +1964,35 @@ document.querySelector('#bear-wardrobe-options').addEventListener('click', (even
         showToast('No se pudo guardar el accesorio elegido en este dispositivo.');
     }
 });
+document.querySelector('#memory-album-filters').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-album-filter]');
+    if (!button) return;
+    activeAlbumFilter = button.dataset.albumFilter;
+    document.querySelectorAll('[data-album-filter]').forEach((filter) => {
+        const selected = filter === button;
+        filter.classList.toggle('is-active', selected);
+        filter.setAttribute('aria-pressed', String(selected));
+    });
+    renderMemoryAlbum(albumPlaces);
+});
+document.querySelector('#pooh-ideas-grid').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-pooh-idea]');
+    if (!button) return;
+    const ideaId = button.dataset.poohIdea;
+    const validIds = new Set([...document.querySelectorAll('[data-pooh-idea]')].map((item) => item.dataset.poohIdea));
+    const savedIds = loadStoredList(POOH_IDEAS_KEY, (id) => validIds.has(id));
+    const nextIds = savedIds.includes(ideaId)
+        ? savedIds.filter((id) => id !== ideaId)
+        : [...savedIds, ideaId];
+    try {
+        localStorage.setItem(POOH_IDEAS_KEY, JSON.stringify(nextIds));
+        renderPoohIdeas();
+    } catch (error) {
+        console.error('No se pudo guardar la idea de Pooh:', error);
+        showToast('No se pudo guardar esta idea en el dispositivo.');
+    }
+});
+renderPoohIdeas();
 document.querySelector('#theme-toggle').addEventListener('click', () => {
     const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     applyTheme(theme);

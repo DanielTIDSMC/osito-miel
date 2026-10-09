@@ -10,8 +10,8 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="assets/icons/icon.svg">
-    <link rel="stylesheet" href="styles.css?v=bear-accessories-v1">
-    <script src="app.js?v=bear-accessories-v1" defer></script>
+    <link rel="stylesheet" href="styles.css?v=memory-album-pooh-ideas-v1">
+    <script src="app.js?v=memory-album-pooh-ideas-v1" defer></script>
 </head>
 <body>
     <div id="loading-screen" class="loading-screen" role="status" aria-live="polite">
@@ -33,8 +33,10 @@
                 <nav id="section-menu" class="section-menu" aria-label="Secciones de la app" hidden>
                     <button type="button" data-view-target="home" aria-current="page"><span aria-hidden="true">♡</span> Inicio</button>
                     <button type="button" data-view-target="memories"><span aria-hidden="true">✿</span> Recuerdos</button>
+                    <button type="button" data-view-target="album"><span aria-hidden="true">&#128247;</span> Álbum</button>
                     <button type="button" data-view-target="places"><span aria-hidden="true">&#128205;</span> Lugares</button>
                     <button type="button" data-view-target="recommendations"><span aria-hidden="true">&#10024;</span> Recomendados</button>
+                    <button type="button" data-view-target="pooh-corner"><span aria-hidden="true">&#127852;</span> Ideas de Pooh</button>
                     <button type="button" data-view-target="plans"><span aria-hidden="true">✦</span> Planes</button>
                     <button type="button" data-view-target="together"><span aria-hidden="true">♡</span> Para nosotros</button>
                     <button type="button" data-view-target="settings"><span aria-hidden="true">⚙</span> Ajustes</button>
@@ -186,6 +188,26 @@
             <p id="memory-empty" class="memory-empty">Los recuerdos que guardes aparecerán aquí, como miel en un frasquito.</p>
             </section>
         </div>
+        <div class="app-view" data-app-view="album" hidden>
+            <section class="memory-album-section" aria-labelledby="memory-album-title">
+                <div class="section-label">
+                    <span class="section-icon" aria-hidden="true">&#128247;</span>
+                    <div>
+                        <p class="eyebrow">FOTOS Y NOTITAS QUE HAN GUARDADO</p>
+                        <h2 id="memory-album-title">Nuestro álbum de recuerdos</h2>
+                    </div>
+                </div>
+                <p class="memory-album-intro">Cada paseo y cada mensajito bonito tiene su lugar aquí.</p>
+                <p id="memory-album-count" class="memory-album-count" aria-live="polite"></p>
+                <div id="memory-album-filters" class="memory-album-filters" role="group" aria-label="Filtrar recuerdos del álbum">
+                    <button class="memory-album-filter is-active" type="button" data-album-filter="all" aria-pressed="true">Todo</button>
+                    <button class="memory-album-filter" type="button" data-album-filter="photo" aria-pressed="false">Fotos</button>
+                    <button class="memory-album-filter" type="button" data-album-filter="note" aria-pressed="false">Notitas</button>
+                </div>
+                <div id="memory-album-grid" class="memory-album-grid"></div>
+                <p id="memory-album-empty" class="memory-album-empty" hidden>Cuando guarden fotos o notitas, aparecerán aquí juntitas. ♡</p>
+            </section>
+        </div>
         <div class="app-view" data-app-view="places" hidden>
             <section class="places-section" aria-labelledby="places-title">
             <div class="section-label">
@@ -318,6 +340,50 @@
                         <div class="recommendation-links"><a href="https://www.google.com/maps/search/?api=1&query=Laguna+del+Porvenir+Amatl%C3%A1n+de+los+Reyes" target="_blank" rel="noopener noreferrer">Ver mapa ↗</a><a href="https://turismo.cordoba.gob.mx/" target="_blank" rel="noopener noreferrer">Turismo de Córdoba ↗</a></div>
                     </article>
                 </div>
+            </section>
+        </div>
+        <div class="app-view" data-app-view="pooh-corner" hidden>
+            <section class="pooh-ideas-section" aria-labelledby="pooh-ideas-title">
+                <div class="section-label">
+                    <span class="section-icon" aria-hidden="true">&#127852;</span>
+                    <div>
+                        <p class="eyebrow">IDEAS PARA HACER MÁS MÁGICO SU RINCONCITO</p>
+                        <h2 id="pooh-ideas-title">¿Qué le agregamos al mundo de Pooh?</h2>
+                    </div>
+                </div>
+                <p class="pooh-ideas-intro">Inspiradas en la miel, la amistad y el Bosque de los Cien Acres. Marquen las que más le gusten a Osito para tenerlas presentes como ideas futuras.</p>
+                <p id="pooh-ideas-count" class="pooh-ideas-count" aria-live="polite">Todavía no han elegido ideas.</p>
+                <div id="pooh-ideas-grid" class="pooh-ideas-grid">
+                    <article class="pooh-idea-card">
+                        <span class="pooh-idea-icon" aria-hidden="true">🌳</span>
+                        <p class="pooh-idea-kicker">UNA AVENTURA PARA USTEDES</p>
+                        <h3>Un mapita del Bosque de los Cien Acres</h3>
+                        <p>Un mapa ilustrado donde cada caminito lleve a un recuerdo, una foto o un lugar que hayan visitado.</p>
+                        <button type="button" data-pooh-idea="forest-map" aria-pressed="false">♡ Me gustaría</button>
+                    </article>
+                    <article class="pooh-idea-card">
+                        <span class="pooh-idea-icon" aria-hidden="true">🍯</span>
+                        <p class="pooh-idea-kicker">UN DETALLE CON MIEL</p>
+                        <h3>Un tarrito que se llena poquito a poquito</h3>
+                        <p>Un frasquito visual que cambie con los momentos especiales y muestre cuánto cariño han guardado.</p>
+                        <button type="button" data-pooh-idea="honey-jar" aria-pressed="false">♡ Me gustaría</button>
+                    </article>
+                    <article class="pooh-idea-card">
+                        <span class="pooh-idea-icon" aria-hidden="true">🐾</span>
+                        <p class="pooh-idea-kicker">AMISTADES DEL BOSQUE</p>
+                        <h3>Un rinconcito para sus personajes favoritos</h3>
+                        <p>Pequeñas dedicatorias originales para Pooh y sus amigos, con colores y detalles distintos para cada uno.</p>
+                        <button type="button" data-pooh-idea="forest-friends" aria-pressed="false">♡ Me gustaría</button>
+                    </article>
+                    <article class="pooh-idea-card">
+                        <span class="pooh-idea-icon" aria-hidden="true">🌦️</span>
+                        <p class="pooh-idea-kicker">UN BOSQUE QUE CAMBIA</p>
+                        <h3>El paisaje según la temporada</h3>
+                        <p>Hojitas de otoño, flores de primavera o una tarde lluviosa para que el rinconcito se sienta diferente al volver.</p>
+                        <button type="button" data-pooh-idea="seasonal-forest" aria-pressed="false">♡ Me gustaría</button>
+                    </article>
+                </div>
+                <p class="pooh-ideas-note">Las ideas que marquen se guardan en este dispositivo; todavía no activan esas funciones.</p>
             </section>
         </div>
         <div class="app-view" data-app-view="plans" hidden>
