@@ -10,8 +10,8 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="assets/icons/icon.svg">
-    <link rel="stylesheet" href="styles.css?v=memory-album-pooh-ideas-v1">
-    <script src="app.js?v=memory-album-pooh-ideas-v1" defer></script>
+    <link rel="stylesheet" href="styles.css?v=pooh-push-suggestions-v1">
+    <script src="app.js?v=pooh-push-suggestions-v1" defer></script>
 </head>
 <body>
     <div id="loading-screen" class="loading-screen" role="status" aria-live="polite">
@@ -383,7 +383,21 @@
                         <button type="button" data-pooh-idea="seasonal-forest" aria-pressed="false">♡ Me gustaría</button>
                     </article>
                 </div>
-                <p class="pooh-ideas-note">Las ideas que marquen se guardan en este dispositivo; todavía no activan esas funciones.</p>
+                <p class="pooh-ideas-note">Las ideas marcadas quedan como favoritas en este dispositivo; todavía no activan esas funciones.</p>
+                <form id="pooh-suggestion-form" class="pooh-suggestion-form">
+                    <div>
+                        <p class="pooh-idea-kicker">UNA IDEA NUEVA DE OSITO</p>
+                        <label for="pooh-suggestion-input">¿Qué le gustaría agregar?</label>
+                    </div>
+                    <textarea id="pooh-suggestion-input" maxlength="180" rows="2" placeholder="Escribe una idea para nuestro rinconcito..." required></textarea>
+                    <button class="add-date-button" type="submit">Compartir sugerencia ♡</button>
+                </form>
+                <p id="pooh-suggestion-sync-note" class="pooh-suggestion-sync-note" aria-live="polite">Conecten la sincronización para compartir sugerencias y enviar avisos al otro celular.</p>
+                <div class="pooh-shared-suggestions">
+                    <h3>Sugerencias de Osito</h3>
+                    <ul id="pooh-suggestion-list" class="pooh-suggestion-list" aria-live="polite"></ul>
+                    <p id="pooh-suggestion-empty" class="pooh-suggestion-empty">Cuando Osito comparta una idea, aparecerá aquí.</p>
+                </div>
             </section>
         </div>
         <div class="app-view" data-app-view="plans" hidden>

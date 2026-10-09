@@ -1,9 +1,9 @@
-const CACHE_NAME = 'osito-miel-shell-v27';
+const CACHE_NAME = 'osito-miel-shell-v28';
 const APP_SHELL = [
     './',
     './index.html',
-    './styles.css?v=memory-album-pooh-ideas-v1',
-    './app.js?v=memory-album-pooh-ideas-v1',
+    './styles.css?v=pooh-push-suggestions-v1',
+    './app.js?v=pooh-push-suggestions-v1',
     './manifest.json',
     './assets/icons/icon.svg',
     './assets/places/visited.json?v=ratings-v1',

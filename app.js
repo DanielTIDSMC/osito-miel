@@ -15,6 +15,7 @@ const NOTES = [
 
 const MEMORIES_KEY = 'osito-miel.memories.v1';
 const POOH_IDEAS_KEY = 'osito-miel.pooh-ideas.v1';
+const POOH_SUGGESTIONS_KEY = 'osito-miel.pooh-suggestions.v1';
 const BEAR_ACCESSORY_KEY = 'osito-miel.bear-accessory.v1';
 const THEME_KEY = 'osito-miel.theme.v1';
 const REMINDER_KEY = 'osito-miel.reminder-time.v1';
@@ -144,6 +145,7 @@ let currentPlaceCount = 0;
 let albumPlaces = [];
 let albumPhotoUrls = [];
 let activeAlbumFilter = 'all';
+let poohSuggestions = [];
 let photoViewerItems = [];
 let photoViewerObjectUrl = null;
 let photoViewerTouchStartX = null;
@@ -320,6 +322,11 @@ function loadStoredList(key, isValid) {
         return [];
     }
 }
+
+poohSuggestions = loadStoredList(POOH_SUGGESTIONS_KEY, (suggestion) =>
+    suggestion && typeof suggestion.id === 'string' && typeof suggestion.text === 'string' &&
+    typeof suggestion.createdAt === 'string'
+);
 
 function loadPlaceOverrides() {
     try {
@@ -754,6 +761,7 @@ function updateSyncControls() {
     syncConnectButton.textContent = cloudConfig ? 'Guardar conexión y sincronizar' : 'Conectar y sincronizar';
     updatePushControls();
     updateSyncIndicator(syncStatus.textContent, syncStatus.dataset.state);
+    renderPoohSuggestions();
 }
 
 function getPushDeviceId() {
@@ -773,18 +781,18 @@ async function updatePushControls() {
     if (!pushNotificationsButton) return;
     const supported = Boolean(cloudConfig && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window);
     pushNotificationsButton.hidden = !supported;
-    if (!supported) { setPushStatus('Conecta la sincronizaci\u00f3n para activar avisos cuando Osito agregue recuerdos.'); return; }
+    if (!supported) { setPushStatus('Conecta la sincronizaci\u00f3n para recibir avisos cuando Osito agregue recuerdos o sugerencias.'); return; }
     try {
         const registration = await navigator.serviceWorker.ready;
         const subscription = await registration.pushManager.getSubscription();
         if (subscription && Notification.permission === 'granted' && localStorage.getItem(PUSH_ENABLED_KEY) === 'true') {
             pushNotificationsButton.textContent = 'Notificaciones activadas';
             pushNotificationsButton.disabled = true;
-            setPushStatus('Este celular recibir\u00e1 avisos cuando haya recuerdos nuevos.');
+            setPushStatus('Este celular recibir\u00e1 avisos cuando haya recuerdos o sugerencias nuevas.');
         } else {
             pushNotificationsButton.textContent = 'Activar notificaciones push';
             pushNotificationsButton.disabled = false;
-            setPushStatus(Notification.permission === 'denied' ? 'Las notificaciones est\u00e1n bloqueadas en los ajustes del navegador.' : 'Act\u00edvalas una vez en cada celular para recibir avisos de nuevos recuerdos.');
+            setPushStatus(Notification.permission === 'denied' ? 'Las notificaciones est\u00e1n bloqueadas en los ajustes del navegador.' : 'Act\u00edvalas en el celular que recibir\u00e1 avisos de nuevos recuerdos y sugerencias.');
         }
     } catch (error) {
         pushNotificationsButton.disabled = false;
@@ -858,6 +866,7 @@ async function getLocalSharedData() {
     }
     return {
         memories,
+        poohSuggestions,
         dateIdeas: customDates,
         savedDateIds,
         pickedDateId,
@@ -940,6 +949,8 @@ function mergeSharedData(local, remote, remoteUpdatedAt) {
     return {
         memories: mergeEntries(local.memories, remote.memories || [], (entry) => `${entry.date}\0${entry.text}`)
             .sort((first, second) => second.date.localeCompare(first.date)).slice(0, 1000),
+        poohSuggestions: mergeEntries(local.poohSuggestions || [], remote.poohSuggestions || [], (suggestion) => suggestion.id)
+            .sort((first, second) => second.createdAt.localeCompare(first.createdAt)).slice(0, 1000),
         dateIdeas: mergeEntries(local.dateIdeas, remote.dateIdeas || [], (idea) => idea.id).slice(0, 1000),
         savedDateIds: Object.entries(dateStates).filter(([, state]) => state.saved).map(([id]) => id),
         pickedDateId: localIsNewer ? (local.pickedDateId || remote.pickedDateId || null) : (remote.pickedDateId || local.pickedDateId || null),
@@ -966,6 +977,7 @@ function mergeSharedData(local, remote, remoteUpdatedAt) {
 
 async function saveLocalSharedData(data) {
     localStorage.setItem(MEMORIES_KEY, JSON.stringify(data.memories));
+    localStorage.setItem(POOH_SUGGESTIONS_KEY, JSON.stringify(data.poohSuggestions || []));
     localStorage.setItem(DATE_IDEAS_KEY, JSON.stringify(data.dateIdeas));
     localStorage.setItem(SAVED_DATES_KEY, JSON.stringify(data.savedDateIds));
     localStorage.setItem(PICKED_DATE_KEY, data.pickedDateId || '');
@@ -997,6 +1009,7 @@ async function saveLocalSharedData(data) {
     });
 
     memories = data.memories;
+    poohSuggestions = data.poohSuggestions || [];
     customDates = data.dateIdeas;
     savedDateIds = data.savedDateIds;
     pickedDateId = data.pickedDateId;
@@ -1005,6 +1018,7 @@ async function saveLocalSharedData(data) {
     dailyAnswers = data.dailyAnswers;
     anniversaryDateInput.value = data.anniversary;
     renderMemories();
+    renderPoohSuggestions();
     renderDates();
     renderDailyQuestion();
     updateAnniversaryStatus(data.anniversary);
@@ -1173,7 +1187,7 @@ pushNotificationsButton.addEventListener('click', async () => {
             body: JSON.stringify({ deviceId: getPushDeviceId(), subscription: subscription.toJSON() })
         });
         localStorage.setItem(PUSH_ENABLED_KEY, 'true');
-        setPushStatus('Este celular recibir\u00e1 avisos cuando haya recuerdos nuevos.');
+        setPushStatus('Este celular recibir\u00e1 avisos cuando haya recuerdos o sugerencias nuevas.');
         pushNotificationsButton.textContent = 'Notificaciones activadas';
     } catch (error) {
         setPushStatus(error.message || 'No se pudieron activar las notificaciones.', 'error');
@@ -1951,6 +1965,31 @@ function renderPoohIdeas() {
         : 'Todavía no han elegido ideas.';
 }
 
+function renderPoohSuggestions() {
+    const list = document.querySelector('#pooh-suggestion-list');
+    if (!list) return;
+    list.replaceChildren();
+    const sorted = [...poohSuggestions].sort((first, second) => second.createdAt.localeCompare(first.createdAt));
+    sorted.forEach((suggestion) => {
+        const item = document.createElement('li');
+        item.className = 'pooh-suggestion-item';
+        const text = document.createElement('p');
+        text.textContent = suggestion.text;
+        const time = document.createElement('time');
+        const date = new Date(suggestion.createdAt);
+        time.textContent = Number.isNaN(date.getTime())
+            ? ''
+            : new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+        if (suggestion.createdAt) time.dateTime = suggestion.createdAt;
+        item.append(text, time);
+        list.append(item);
+    });
+    document.querySelector('#pooh-suggestion-empty').hidden = sorted.length > 0;
+    document.querySelector('#pooh-suggestion-sync-note').textContent = cloudConfig
+        ? 'La sugerencia se compartirá al sincronizar. Para recibir el aviso, activa las notificaciones push en tu celular.'
+        : 'La sugerencia queda guardada aquí. Conecta la sincronización para compartirla y enviar el aviso al otro celular.';
+}
+
 document.querySelector('#surprise-button').addEventListener('click', showSurprise);
 document.querySelector('#another-button').addEventListener('click', showSurprise);
 document.querySelector('#bear-wardrobe-options').addEventListener('click', (event) => {
@@ -1993,6 +2032,30 @@ document.querySelector('#pooh-ideas-grid').addEventListener('click', (event) => 
     }
 });
 renderPoohIdeas();
+renderPoohSuggestions();
+document.querySelector('#pooh-suggestion-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    const input = document.querySelector('#pooh-suggestion-input');
+    const text = input.value.trim();
+    if (!text) return;
+    const suggestion = { id: crypto.randomUUID(), text: text.slice(0, 180), createdAt: new Date().toISOString() };
+    const nextSuggestions = [...poohSuggestions, suggestion].slice(-1000);
+    try {
+        localStorage.setItem(POOH_SUGGESTIONS_KEY, JSON.stringify(nextSuggestions));
+        poohSuggestions = nextSuggestions;
+        input.value = '';
+        renderPoohSuggestions();
+        if (cloudConfig) {
+            scheduleCloudSync();
+            showToast('Sugerencia guardada y lista para compartirse con Osito ♡');
+        } else {
+            showToast('Sugerencia guardada aquí. Conecta la sincronización para compartirla.');
+        }
+    } catch (error) {
+        console.error('No se pudo guardar la sugerencia de Pooh:', error);
+        showToast('No se pudo guardar esta sugerencia en el dispositivo.');
+    }
+});
 document.querySelector('#theme-toggle').addEventListener('click', () => {
     const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     applyTheme(theme);

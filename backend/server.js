@@ -20,7 +20,8 @@ const ALLOWED_DATA_KEYS = new Set([
     'deletedPlaceIds',
     'placeOverrides',
     'placeRatings',
-    'dateStates'
+    'dateStates',
+    'poohSuggestions'
 ]);
 
 function jsonResponse(response, status, body, origin) {
@@ -76,6 +77,16 @@ function validateData(data) {
                 !['precios', 'sabor', 'atencion', 'menu'].includes(category) ||
                 !Number.isInteger(score) || score < 1 || score > 5
             ) || typeof entry.updatedAt !== 'string' || !Number.isFinite(Date.parse(entry.updatedAt))
+        )
+    )) return false;
+
+    if (data.poohSuggestions !== undefined && (
+        !Array.isArray(data.poohSuggestions) || data.poohSuggestions.length > 1000 ||
+        data.poohSuggestions.some((suggestion) =>
+            !suggestion || typeof suggestion !== 'object' || Array.isArray(suggestion) ||
+            typeof suggestion.id !== 'string' || !suggestion.id || suggestion.id.length > 128 ||
+            typeof suggestion.text !== 'string' || !suggestion.text.trim() || suggestion.text.length > 180 ||
+            typeof suggestion.createdAt !== 'string' || !Number.isFinite(Date.parse(suggestion.createdAt))
         )
     )) return false;
 
@@ -142,7 +153,8 @@ async function loadState(filePath) {
                     deletedPlaceIds: [],
                     placeOverrides: {},
                     placeRatings: {},
-                    dateStates: {}
+                    dateStates: {},
+                    poohSuggestions: []
                 }
             };
         }
@@ -252,13 +264,17 @@ export function createSyncServer({
         return updated;
     }
 
-    async function notifyOtherDevices(senderDeviceId) {
+    async function notifyOtherDevices(senderDeviceId, suggestion = null) {
         const subscriptions = await pushSubscriptionsTask;
         const recipients = subscriptions.filter((entry) => entry.deviceId !== senderDeviceId);
         if (!recipients.length) return;
         const keys = await getVapidKeys();
         webPush.setVapidDetails('https://danieltidsmc.github.io/osito-miel/', keys.publicKey, keys.privateKey);
-        const payload = JSON.stringify({
+        const payload = JSON.stringify(suggestion ? {
+            title: 'Osito te dejó una sugerencia ♡',
+            body: `“${suggestion.text.slice(0, 110)}”`,
+            url: './?section=pooh-corner'
+        } : {
             title: 'Un poquito de miel para ti',
             body: 'Osito subió algo nuevo a sus recuerdos. Entra a verlo 🧸🍯',
             url: './'
@@ -391,6 +407,7 @@ export function createSyncServer({
             let result;
             let updateError;
             let updateFailure;
+            let newSuggestion = null;
             const writeOperation = writeQueue.then(async () => {
                 const current = await stateTask;
                 if (body.revision !== current.revision) {
@@ -403,6 +420,8 @@ export function createSyncServer({
                     updatedAt: new Date().toISOString(),
                     data: body.data
                 };
+                const currentSuggestionIds = new Set((current.data.poohSuggestions || []).map((suggestion) => suggestion.id));
+                newSuggestion = (body.data.poohSuggestions || []).find((suggestion) => !currentSuggestionIds.has(suggestion.id)) || null;
                 await persistState(normalizedDataFile, nextState);
                 stateTask = Promise.resolve(nextState);
                 result = nextState;
@@ -415,7 +434,7 @@ export function createSyncServer({
             if (updateFailure) throw updateFailure;
             jsonResponse(response, updateError ? 409 : 200, result, origin);
             if (!updateError) {
-                void notifyOtherDevices(typeof body.deviceId === 'string' ? body.deviceId : '').catch((error) => {
+                void notifyOtherDevices(typeof body.deviceId === 'string' ? body.deviceId : '', newSuggestion).catch((error) => {
                     console.error('Could not deliver shared-memory notifications:', error.message);
                 });
             }

@@ -555,6 +555,20 @@ h1 span { color: var(--honey-dark); font-style: italic; }
 .pooh-idea-card button { min-height: 34px; padding: 7px 11px; border: 1px solid var(--input-border); border-radius: 99px; background: var(--surface-strong); color: var(--honey-dark); cursor: pointer; font-size: 10px; font-weight: 700; }
 .pooh-idea-card button.is-saved { border-color: var(--honey); background: var(--surface-honey); }
 .pooh-ideas-note { margin: 12px 0 0; color: var(--soft-ink); font-size: 9px; }
+.pooh-suggestion-form { display: grid; grid-template-columns: minmax(170px, .8fr) minmax(180px, 1.6fr) auto; align-items: end; gap: 11px; margin-top: 22px; padding: 15px; border: 1px solid var(--hero-border); border-radius: 12px; background: var(--surface-honey); }
+.pooh-suggestion-form label { display: block; margin-top: 5px; color: var(--ink); font-family: "Fraunces", Georgia, serif; font-size: 14px; font-weight: 600; }
+.pooh-suggestion-form textarea { width: 100%; min-height: 52px; padding: 10px 12px; resize: vertical; border: 1px solid var(--input-border); border-radius: 9px; background: var(--surface-input); color: var(--ink); font: inherit; font-size: 11px; }
+.pooh-suggestion-form textarea:focus { border-color: var(--honey); outline: none; box-shadow: 0 0 0 3px #d6aa6b22; }
+.pooh-suggestion-form .add-date-button { min-height: 42px; white-space: nowrap; }
+.pooh-suggestion-sync-note { margin: 8px 0 16px; color: var(--soft-ink); font-size: 10px; line-height: 1.6; }
+.pooh-shared-suggestions { margin-top: 17px; }
+.pooh-shared-suggestions > h3 { margin-bottom: 9px; font-size: 16px; }
+.pooh-suggestion-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.pooh-suggestion-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-strong); }
+.pooh-suggestion-item p { margin: 0; color: var(--ink); font-size: 11px; line-height: 1.55; }
+.pooh-suggestion-item time { flex: 0 0 auto; color: var(--soft-ink); font-size: 9px; }
+.pooh-suggestion-empty { margin: 0; color: var(--soft-ink); font-size: 10px; }
+.pooh-suggestion-empty[hidden] { display: none; }
 @media (max-width: 850px) { .memory-album-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 600px) {
     .memory-album-section, .pooh-ideas-section { margin-top: 22px; }
@@ -564,4 +578,7 @@ h1 span { color: var(--honey-dark); font-style: italic; }
     .album-card-copy h3 { font-size: 10px; }
     .pooh-ideas-grid { grid-template-columns: 1fr; gap: 9px; }
     .pooh-idea-card { padding: 15px; }
+    .pooh-suggestion-form { grid-template-columns: 1fr; gap: 9px; padding: 13px; }
+    .pooh-suggestion-form .add-date-button { width: 100%; }
+    .pooh-suggestion-item { align-items: flex-start; flex-direction: column; gap: 5px; }
 }

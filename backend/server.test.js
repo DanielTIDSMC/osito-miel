@@ -78,6 +78,41 @@ test('saves shared state and rejects stale writes without losing data', async ()
     assert.equal(disk.revision, 1);
 });
 
+test('shares Pooh suggestions and rejects malformed suggestions', async () => {
+    const headers = {
+        Authorization: `Bearer ${roomPassword}`,
+        'Content-Type': 'application/json',
+        Origin: 'https://danieltidsmc.github.io'
+    };
+    const current = await fetch(`${baseUrl}/api/state`, { headers }).then((response) => response.json());
+    const suggestion = {
+        id: 'pooh-suggestion-test',
+        text: 'Un mapita ilustrado de nuestros paseos',
+        createdAt: '2026-10-09T12:00:00.000Z'
+    };
+    const savedResponse = await fetch(`${baseUrl}/api/state`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+            ...current,
+            data: { ...current.data, poohSuggestions: [...(current.data.poohSuggestions || []), suggestion] }
+        })
+    });
+    assert.equal(savedResponse.status, 200);
+    const saved = await savedResponse.json();
+    assert.deepEqual(saved.data.poohSuggestions.at(-1), suggestion);
+
+    const invalidResponse = await fetch(`${baseUrl}/api/state`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+            ...saved,
+            data: { ...saved.data, poohSuggestions: [{ ...suggestion, id: 'empty-suggestion', text: '   ' }] }
+        })
+    });
+    assert.equal(invalidResponse.status, 400);
+});
+
 test('protects push registration and only accepts valid subscriptions', async () => {
     const headers = {
         Authorization: 'Bearer ' + roomPassword,
