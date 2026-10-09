@@ -114,6 +114,18 @@ const placesCount = document.querySelector('#places-count');
 const placesEmpty = document.querySelector('#places-empty');
 const placeSuggestions = document.querySelector('#place-suggestions');
 const placeSuggestionList = document.querySelector('#place-suggestion-list');
+const placesSearch = document.querySelector('#places-search');
+const placesFilters = document.querySelector('#places-filters');
+const placesFilterEmpty = document.querySelector('#places-filter-empty');
+const placesRatingSummary = document.querySelector('#places-rating-summary');
+const photoViewer = document.querySelector('#photo-viewer');
+const photoViewerImage = document.querySelector('#photo-viewer-image');
+const photoViewerTitle = document.querySelector('#photo-viewer-title');
+const photoViewerCount = document.querySelector('#photo-viewer-count');
+const photoViewerPrevious = document.querySelector('#photo-viewer-prev');
+const photoViewerNext = document.querySelector('#photo-viewer-next');
+const syncIndicator = document.querySelector('#sync-indicator');
+const syncIndicatorLabel = document.querySelector('#sync-indicator-label');
 const syncForm = document.querySelector('#sync-form');
 const syncApiUrlInput = document.querySelector('#sync-api-url');
 const syncPasswordInput = document.querySelector('#sync-room-password');
@@ -125,6 +137,12 @@ const pushNotificationsButton = document.querySelector('#push-notifications-butt
 const pushNotificationsStatus = document.querySelector('#push-notifications-status');
 
 let activeDateFilter = 'Todas';
+let activePlaceFilter = 'all';
+let photoViewerItems = [];
+let photoViewerObjectUrl = null;
+let photoViewerTouchStartX = null;
+let photoViewerPlaceName = '';
+let photoViewerIndex = 0;
 let pickedDateId = null;
 let placesDatabasePromise;
 let previewPhotoUrl;
@@ -652,6 +670,25 @@ function setSyncStatus(message, state = '') {
     syncStatus.textContent = message;
     if (state) syncStatus.dataset.state = state;
     else delete syncStatus.dataset.state;
+    updateSyncIndicator(message, state);
+}
+
+function updateSyncIndicator(message = '', state = '') {
+    if (!cloudConfig || !syncIndicator) {
+        if (syncIndicator) syncIndicator.hidden = true;
+        return;
+    }
+    syncIndicator.hidden = false;
+    const currentState = state || syncStatus.dataset.state || '';
+    const label = !navigator.onLine ? 'Sin conexi\u00f3n'
+        : currentState === 'connected' ? 'Al d\u00eda'
+            : currentState === 'error' ? 'Revisar'
+                : currentState === 'pending' ? 'Pendiente'
+                    : 'Sincronizando';
+    syncIndicatorLabel.textContent = label;
+    syncIndicator.dataset.state = !navigator.onLine ? 'offline' : currentState;
+    syncIndicator.title = message || label;
+    syncIndicator.setAttribute('aria-label', 'Estado de sincronizaci\u00f3n: ' + label + '. Abrir ajustes.');
 }
 
 function normalizeApiUrl(value) {
@@ -671,6 +708,7 @@ function updateSyncControls() {
     syncDisconnectButton.hidden = !cloudConfig;
     syncConnectButton.textContent = cloudConfig ? 'Guardar conexión y sincronizar' : 'Conectar y sincronizar';
     updatePushControls();
+    updateSyncIndicator(syncStatus.textContent, syncStatus.dataset.state);
 }
 
 function getPushDeviceId() {
@@ -969,6 +1007,7 @@ async function syncSharedData() {
             localStorage.setItem(CLOUD_REVISION_KEY, String(cloudRevision));
             setSyncStatus(`Todo está al día${remoteState.updatedAt ? ` · ${new Intl.DateTimeFormat('es-MX', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(remoteState.updatedAt))}` : ''}.`);
             syncStatus.dataset.state = 'connected';
+            updateSyncIndicator(syncStatus.textContent, 'connected');
             return;
         }
 
@@ -986,6 +1025,7 @@ async function syncSharedData() {
         localStorage.setItem(CLOUD_REVISION_KEY, String(cloudRevision));
         setSyncStatus(`Todo está al día · ${new Intl.DateTimeFormat('es-MX', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(body.updatedAt))}.`);
         syncStatus.dataset.state = 'connected';
+        updateSyncIndicator(syncStatus.textContent, 'connected');
         return;
     }
     throw new Error('Hubo cambios simultáneos en ambos celulares. Vuelve a sincronizar para unirlos.');
@@ -1025,7 +1065,7 @@ function scheduleCloudSync() {
         return;
     }
     clearTimeout(cloudSyncTimer);
-    setSyncStatus(navigator.onLine ? 'Cambios guardados aquí. Sincronizando en un momento…' : 'Cambios guardados sin conexión; se subirán al recuperar internet.');
+    setSyncStatus(navigator.onLine ? 'Cambios guardados aqu\u00ed. Sincronizando en un momento...' : 'Cambios guardados sin conexi\u00f3n; se subir\u00e1n al recuperar internet.', navigator.onLine ? 'pending' : 'offline');
     cloudSyncTimer = setTimeout(() => void runCloudSync(), 900);
 }
 
@@ -1131,7 +1171,7 @@ window.addEventListener('online', () => {
     if (cloudConfig) void runCloudSync();
 });
 window.addEventListener('offline', () => {
-    if (cloudConfig) setSyncStatus('Sin conexión. Sus cambios siguen guardados aquí y se sincronizarán al volver a estar en línea.');
+    if (cloudConfig) setSyncStatus('Sin conexi\u00f3n. Sus cambios siguen guardados aqu\u00ed y se sincronizar\u00e1n al volver a estar en l\u00ednea.', 'offline');
 });
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden && cloudConfig) void runCloudSync();
@@ -1230,6 +1270,7 @@ async function renderPlaces() {
     placePhotoUrls.forEach((url) => URL.revokeObjectURL(url));
     placePhotoUrls = [];
     placesGrid.replaceChildren();
+    placesFilterEmpty.hidden = true;
 
     try {
         if (!archivedPlacesPromise) {
@@ -1299,13 +1340,22 @@ async function renderPlaces() {
         const places = Array.from(placesMap.values())
             .sort((first, second) => (second.date || '').localeCompare(first.date || ''));
 
-        placesCount.textContent = `${places.length} ${places.length === 1 ? 'lugar' : 'lugares'} en su álbum ♡`;
+        placesCount.textContent = places.length + ' lugares en su \u00e1lbum';
+        const ratingValues = places.flatMap((place) => Object.values(place.ratings || {}).filter((score) => Number.isInteger(score) && score >= 1 && score <= 5));
+        const ratedPlaceCount = places.filter((place) => Object.values(place.ratings || {}).some((score) => Number.isInteger(score) && score >= 1 && score <= 5)).length;
+        const averageRating = ratingValues.length ? ratingValues.reduce((total, score) => total + score, 0) / ratingValues.length : 0;
+        placesRatingSummary.textContent = ratingValues.length
+            ? '\u2605 Promedio ' + averageRating.toFixed(1) + '/5 · ' + ratedPlaceCount + ' lugares calificados'
+            : 'A\u00fan no hay calificaciones';
         placesEmpty.hidden = places.length > 0;
         renderPlaceSuggestions(places);
 
         places.forEach((place, index) => {
             const card = document.createElement('article');
             card.className = 'place-card';
+            card.dataset.placeName = normalizePlaceSearch(place.name + ' ' + (place.note || ''));
+            card.dataset.hasPhotos = String(Boolean((place.photos || []).length || place.photo instanceof Blob || (place.additionalPhotos || []).length));
+            card.dataset.hasRatings = String(Object.values(place.ratings || {}).some((score) => Number.isInteger(score) && score >= 1 && score <= 5));
             const photoStrip = document.createElement('div');
             photoStrip.className = 'place-photo-strip';
             const photos = [
@@ -1324,8 +1374,19 @@ async function renderPlaces() {
                     const photo = document.createElement('img');
                     photo.src = photoData.blob ? URL.createObjectURL(photoData.blob) : photoData.src;
                     if (photoData.blob) placePhotoUrls.push(photo.src);
-                    photo.alt = photoData.alt || `Foto de ${place.name}`;
+                    photo.alt = photoData.alt || 'Foto de ' + place.name;
                     photo.loading = index < 6 && photoIndex === 0 ? 'eager' : 'lazy';
+                    photo.classList.add('place-photo-trigger');
+                    photo.tabIndex = 0;
+                    photo.setAttribute('role', 'button');
+                    photo.setAttribute('aria-label', 'Abrir foto ' + (photoIndex + 1) + ' de ' + photos.length + ' de ' + place.name);
+                    photo.addEventListener('click', () => openPhotoViewer(photos, photoIndex, place.name));
+                    photo.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            openPhotoViewer(photos, photoIndex, place.name);
+                        }
+                    });
                     photoStrip.append(photo);
                 });
             } else {
@@ -1377,6 +1438,13 @@ async function renderPlaces() {
             const title = document.createElement('h3');
             title.textContent = place.name;
             copy.append(date, title);
+            const mapLink = document.createElement('a');
+            mapLink.className = 'place-map-link';
+            mapLink.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(place.name);
+            mapLink.target = '_blank';
+            mapLink.rel = 'noopener noreferrer';
+            mapLink.textContent = 'Ver en mapa ↗';
+            copy.append(mapLink);
 
             if (place.note) {
                 const note = document.createElement('p');
@@ -1578,11 +1646,63 @@ async function renderPlaces() {
             card.append(photoStrip, copy);
             placesGrid.append(card);
         });
+        applyPlaceFilters();
     } catch (error) {
         placesEmpty.hidden = false;
         placesEmpty.textContent = 'El álbum no está disponible en este navegador.';
         showPlaceFormError('No se pudo abrir el álbum de lugares:', error);
     }
+}
+
+function normalizePlaceSearch(value) {
+    return String(value || '').toLocaleLowerCase('es-MX').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function applyPlaceFilters() {
+    const query = normalizePlaceSearch(placesSearch.value.trim());
+    const cards = [...placesGrid.querySelectorAll('.place-card')];
+    let visibleCount = 0;
+    cards.forEach((card) => {
+        const matchesSearch = !query || card.dataset.placeName.includes(query);
+        const matchesFilter = activePlaceFilter === 'all' ||
+            (activePlaceFilter === 'photos' && card.dataset.hasPhotos === 'true') ||
+            (activePlaceFilter === 'no-photos' && card.dataset.hasPhotos !== 'true') ||
+            (activePlaceFilter === 'rated' && card.dataset.hasRatings === 'true');
+        card.hidden = !(matchesSearch && matchesFilter);
+        if (!card.hidden) visibleCount += 1;
+    });
+    placesFilterEmpty.hidden = cards.length === 0 || visibleCount > 0;
+    placesCount.textContent = visibleCount === cards.length
+        ? cards.length + ' lugares en su \u00e1lbum'
+        : visibleCount + ' de ' + cards.length + ' lugares';
+}
+
+function openPhotoViewer(photos, index, placeName) {
+    photoViewerItems = photos;
+    photoViewerPlaceName = placeName;
+    photoViewerIndex = index;
+    updatePhotoViewer();
+    if (typeof photoViewer.showModal === 'function') photoViewer.showModal();
+    else photoViewer.setAttribute('open', '');
+}
+
+function updatePhotoViewer() {
+    const item = photoViewerItems[photoViewerIndex];
+    if (!item) return;
+    if (photoViewerObjectUrl) URL.revokeObjectURL(photoViewerObjectUrl);
+    photoViewerObjectUrl = item.blob ? URL.createObjectURL(item.blob) : null;
+    photoViewerImage.src = photoViewerObjectUrl || item.src;
+    photoViewerImage.alt = item.alt || 'Foto de ' + photoViewerPlaceName;
+    photoViewerTitle.textContent = photoViewerPlaceName;
+    photoViewerCount.textContent = 'Foto ' + (photoViewerIndex + 1) + ' de ' + photoViewerItems.length;
+    photoViewerPrevious.hidden = photoViewerItems.length < 2;
+    photoViewerNext.hidden = photoViewerItems.length < 2;
+}
+
+function movePhotoViewer(direction) {
+    if (photoViewerItems.length < 2) return;
+    photoViewerIndex = (photoViewerIndex + direction + photoViewerItems.length) % photoViewerItems.length;
+    updatePhotoViewer();
 }
 
 function renderPlaceSuggestions(places) {
@@ -1645,12 +1765,18 @@ if (savedReminderTime) {
 
 function renderMemories() {
     memoryList.replaceChildren();
-    memories.forEach((memory) => {
+    [...memories].sort((first, second) => String(second.date).localeCompare(String(first.date))).forEach((memory) => {
         const item = document.createElement('li');
         item.className = 'memory-item';
+        const time = document.createElement('time');
+        time.className = 'memory-date';
+        time.dateTime = memory.date;
+        const date = new Date(memory.date);
+        time.textContent = Number.isNaN(date.getTime()) ? memory.date : new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
         const text = document.createElement('span');
+        text.className = 'memory-text';
         text.textContent = memory.text;
-        item.append(text);
+        item.append(time, text);
         memoryList.append(item);
     });
     memoryEmpty.hidden = memories.length > 0;
@@ -1990,19 +2116,64 @@ sectionMenuToggle.addEventListener('click', () => {
     sectionMenuToggle.setAttribute('aria-expanded', String(isOpening));
 });
 
-sectionMenu.addEventListener('click', (event) => {
-    const target = event.target.closest('[data-view-target]');
-    if (!target) return;
-    const selectedView = target.dataset.viewTarget;
-    appViews.forEach((view) => {
-        view.hidden = view.dataset.appView !== selectedView;
-    });
+function showAppView(selectedView) {
+    appViews.forEach((view) => { view.hidden = view.dataset.appView !== selectedView; });
     sectionMenu.querySelectorAll('[data-view-target]').forEach((button) => {
-        if (button === target) button.setAttribute('aria-current', 'page');
+        if (button.dataset.viewTarget === selectedView) button.setAttribute('aria-current', 'page');
         else button.removeAttribute('aria-current');
     });
     closeSectionMenu();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+sectionMenu.addEventListener('click', (event) => {
+    const target = event.target.closest('[data-view-target]');
+    if (target) showAppView(target.dataset.viewTarget);
+});
+
+document.querySelector('.quick-access').addEventListener('click', (event) => {
+    const target = event.target.closest('[data-view-target]');
+    if (target) showAppView(target.dataset.viewTarget);
+});
+
+syncIndicator.addEventListener('click', () => showAppView('settings'));
+placesSearch.addEventListener('input', applyPlaceFilters);
+placesFilters.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-place-filter]');
+    if (!button) return;
+    activePlaceFilter = button.dataset.placeFilter;
+    placesFilters.querySelectorAll('[data-place-filter]').forEach((filter) => {
+        const selected = filter === button;
+        filter.classList.toggle('is-active', selected);
+        filter.setAttribute('aria-pressed', String(selected));
+    });
+    applyPlaceFilters();
+});
+
+photoViewerPrevious.addEventListener('click', () => movePhotoViewer(-1));
+photoViewerNext.addEventListener('click', () => movePhotoViewer(1));
+document.querySelector('#photo-viewer-close').addEventListener('click', () => photoViewer.close());
+photoViewer.addEventListener('click', (event) => {
+    if (event.target === photoViewer) photoViewer.close();
+});
+photoViewer.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowLeft') movePhotoViewer(-1);
+    if (event.key === 'ArrowRight') movePhotoViewer(1);
+});
+photoViewer.addEventListener('touchstart', (event) => {
+    photoViewerTouchStartX = event.changedTouches[0]?.clientX ?? null;
+}, { passive: true });
+photoViewer.addEventListener('touchend', (event) => {
+    if (photoViewerTouchStartX === null) return;
+    const delta = event.changedTouches[0].clientX - photoViewerTouchStartX;
+    if (Math.abs(delta) > 45) movePhotoViewer(delta < 0 ? 1 : -1);
+    photoViewerTouchStartX = null;
+}, { passive: true });
+photoViewer.addEventListener('close', () => {
+    photoViewerImage.removeAttribute('src');
+    if (photoViewerObjectUrl) URL.revokeObjectURL(photoViewerObjectUrl);
+    photoViewerObjectUrl = null;
+    photoViewerItems = [];
 });
 
 document.addEventListener('click', (event) => {

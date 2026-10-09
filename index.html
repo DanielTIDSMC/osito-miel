@@ -10,8 +10,8 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="assets/icons/icon.svg">
-    <link rel="stylesheet" href="styles.css?v=ratings-v2">
-    <script src="app.js?v=ratings-v1" defer></script>
+    <link rel="stylesheet" href="styles.css?v=enhancements-v1">
+    <script src="app.js?v=enhancements-v1" defer></script>
 </head>
 <body>
     <div id="loading-screen" class="loading-screen" role="status" aria-live="polite">
@@ -33,12 +33,16 @@
                 <nav id="section-menu" class="section-menu" aria-label="Secciones de la app" hidden>
                     <button type="button" data-view-target="home" aria-current="page"><span aria-hidden="true">♡</span> Inicio</button>
                     <button type="button" data-view-target="memories"><span aria-hidden="true">✿</span> Recuerdos</button>
+                    <button type="button" data-view-target="places"><span aria-hidden="true">&#128205;</span> Lugares</button>
                     <button type="button" data-view-target="plans"><span aria-hidden="true">✦</span> Planes</button>
                     <button type="button" data-view-target="together"><span aria-hidden="true">♡</span> Para nosotros</button>
                     <button type="button" data-view-target="settings"><span aria-hidden="true">⚙</span> Ajustes</button>
                 </nav>
             </div>
             <div class="topbar-actions">
+                <button id="sync-indicator" class="sync-indicator" type="button" aria-label="Estado de sincronizaci&oacute;n" hidden>
+                    <span class="sync-indicator-dot" aria-hidden="true"></span><span id="sync-indicator-label">Al d&iacute;a</span>
+                </button>
                 <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Activar modo oscuro" aria-pressed="false">
                     <span id="theme-icon" aria-hidden="true">☾</span>
                     <span id="theme-label">Modo oscuro</span>
@@ -88,6 +92,12 @@
                 <span class="little-note">un abrazo<br>en forma de miel</span>
             </div>
         </section>
+
+        <nav class="quick-access" aria-label="Accesos r&aacute;pidos">
+            <button type="button" data-view-target="memories"><span aria-hidden="true">&#10084;</span> Guardar recuerdo</button>
+            <button type="button" data-view-target="places"><span aria-hidden="true">&#128205;</span> Ver lugares</button>
+            <button type="button" data-view-target="plans"><span aria-hidden="true">&#10022;</span> Nuestra pr&oacute;xima cita</button>
+        </nav>
 
         <section id="surprise-card" class="surprise-card" aria-live="polite" hidden>
             <span class="card-heart" aria-hidden="true">♡</span>
@@ -141,9 +151,12 @@
                 <input id="memory-input" type="text" maxlength="160" placeholder="Escribe aquí un momentito que quieras guardar..." required>
                 <button class="save-button" type="submit">Guardar <span aria-hidden="true">＋</span></button>
             </form>
+            <p class="memory-timeline-heading">Nuestra l&iacute;nea del tiempo</p>
             <ul id="memory-list" class="memory-list" aria-live="polite"></ul>
             <p id="memory-empty" class="memory-empty">Los recuerdos que guardes aparecerán aquí, como miel en un frasquito.</p>
             </section>
+        </div>
+        <div class="app-view" data-app-view="places" hidden>
             <section class="places-section" aria-labelledby="places-title">
             <div class="section-label">
                 <span class="section-icon memory-icon" aria-hidden="true">⌖</span>
@@ -152,7 +165,21 @@
                     <h2 id="places-title">Lugares que ya visitamos</h2>
                 </div>
             </div>
-            <p id="places-count" class="places-count">Su álbum de aventuras aparecerá aquí.</p>
+            <div class="places-overview">
+                <p id="places-count" class="places-count">Su &aacute;lbum de aventuras aparecer&aacute; aqu&iacute;.</p>
+                <p id="places-rating-summary" class="places-rating-summary" aria-live="polite"></p>
+            </div>
+            <div class="places-tools">
+                <label class="sr-only" for="places-search">Buscar en nuestros lugares</label>
+                <input id="places-search" class="places-search" type="search" placeholder="Buscar lugar..." autocomplete="off">
+                <div id="places-filters" class="places-filters" role="group" aria-label="Filtrar lugares">
+                    <button class="place-filter-button is-active" type="button" data-place-filter="all" aria-pressed="true">Todos</button>
+                    <button class="place-filter-button" type="button" data-place-filter="photos" aria-pressed="false">Con fotos</button>
+                    <button class="place-filter-button" type="button" data-place-filter="no-photos" aria-pressed="false">Sin fotos</button>
+                    <button class="place-filter-button" type="button" data-place-filter="rated" aria-pressed="false">Calificados</button>
+                </div>
+            </div>
+            <p id="places-filter-empty" class="places-filter-empty" hidden>No se encontraron lugares con esos filtros.</p>
             <div id="places-grid" class="places-grid"></div>
             <p id="places-empty" class="places-empty">
                 Todavía no hay lugares guardados. Agreguen el primero con una foto bonita ♡
@@ -334,6 +361,19 @@
         </footer>
 
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+        <dialog id="photo-viewer" class="photo-viewer" aria-label="Fotos del lugar">
+            <div class="photo-viewer-panel">
+                <button id="photo-viewer-close" class="photo-viewer-close" type="button" aria-label="Cerrar fotos">&times;</button>
+                <p id="photo-viewer-title" class="photo-viewer-title"></p>
+                <div class="photo-viewer-stage">
+                    <button id="photo-viewer-prev" class="photo-viewer-nav" type="button" aria-label="Foto anterior">&lsaquo;</button>
+                    <img id="photo-viewer-image" alt="">
+                    <button id="photo-viewer-next" class="photo-viewer-nav" type="button" aria-label="Foto siguiente">&rsaquo;</button>
+                </div>
+                <p id="photo-viewer-count" class="photo-viewer-count" aria-live="polite"></p>
+            </div>
+        </dialog>
     </main>
 </body>
 </html>
