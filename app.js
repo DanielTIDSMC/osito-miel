@@ -14,6 +14,7 @@ const NOTES = [
 ];
 
 const MEMORIES_KEY = 'osito-miel.memories.v1';
+const DELETED_MEMORIES_KEY = 'osito-miel.deleted-memories.v1';
 const POOH_IDEAS_KEY = 'osito-miel.pooh-ideas.v1';
 const POOH_SUGGESTIONS_KEY = 'osito-miel.pooh-suggestions.v1';
 const BEAR_ACCESSORY_KEY = 'osito-miel.bear-accessory.v1';
@@ -92,6 +93,8 @@ const PLACE_SUGGESTIONS = [
 const surpriseCard = document.querySelector('#surprise-card');
 const surpriseText = document.querySelector('#surprise-text');
 const toast = document.querySelector('#toast');
+const toastMessage = document.querySelector('#toast-message');
+const toastAction = document.querySelector('#toast-action');
 const memoryList = document.querySelector('#memory-list');
 const memoryEmpty = document.querySelector('#memory-empty');
 const reminderForm = document.querySelector('#reminder-form');
@@ -162,6 +165,7 @@ let cloudRevision = null;
 let archivedPlacesPromise;
 let lastNoteIndex = -1;
 let toastTimer;
+const pendingMemoryDeletes = new Map();
 let installPrompt;
 let reminderTimer;
 let activeReminderTime = null;
@@ -190,16 +194,33 @@ function applyTheme(theme) {
     document.querySelector('#theme-label').textContent = isDark ? 'Modo claro' : 'Modo oscuro';
 }
 
-function showToast(message) {
-    toast.textContent = message;
+function showToast(message, action = null) {
+    toastMessage.textContent = message;
+    toastAction.hidden = !action;
+    toastAction.textContent = action?.label || '';
+    toastAction.onclick = action ? () => {
+        const callback = action.onAction;
+        toast.classList.remove('visible');
+        clearTimeout(toastTimer);
+        callback();
+    } : null;
     toast.classList.add('visible');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove('visible'), 3200);
+    toastTimer = setTimeout(() => toast.classList.remove('visible'), action?.duration || 3200);
 }
 
 function renderBearWardrobe() {
     const options = document.querySelector('#bear-wardrobe-options');
     if (!options) return;
+
+    const illustration = document.querySelector('#bear-illustration');
+    const sectionBearIcon = document.querySelector('#section-bear-icon');
+    const bearArt = {
+        none: { src: './assets/bear/bear-original.png', alt: 'Osito de peluche 3D abrazando un tarro de miel' },
+        scarf: { src: './assets/bear/bear-scarf.png', alt: 'Osito de peluche 3D con bufandita rosa, abrazando un tarro de miel' },
+        hat: { src: './assets/bear/bear-hat.png', alt: 'Osito de peluche 3D con gorrito tejido color miel, abrazando un tarro de miel' },
+        glasses: { src: './assets/bear/bear-glasses.png', alt: 'Osito de peluche 3D con lentes de corazón, abrazando un tarro de miel' }
+    };
 
     const accessoryRules = {
         none: { label: 'Original', unlocked: true },
@@ -225,9 +246,18 @@ function renderBearWardrobe() {
         button.classList.toggle('is-selected', selected === accessory);
     });
 
-    document.querySelectorAll('[data-bear-art]').forEach((art) => {
-        art.classList.toggle('is-visible', art.dataset.bearArt === selected);
-    });
+    if (illustration && bearArt[selected] && illustration.dataset.accessory !== selected) {
+        illustration.classList.remove('is-changing');
+        void illustration.offsetWidth;
+        illustration.src = bearArt[selected].src;
+        illustration.alt = bearArt[selected].alt;
+        illustration.dataset.accessory = selected;
+        illustration.classList.add('is-changing');
+    }
+    if (sectionBearIcon && bearArt[selected] && sectionBearIcon.dataset.accessory !== selected) {
+        sectionBearIcon.src = bearArt[selected].src;
+        sectionBearIcon.dataset.accessory = selected;
+    }
 
     const progress = document.querySelector('#bear-wardrobe-progress');
     if (memories.length < 1) progress.textContent = 'Guarda 1 recuerdo para desbloquear la bufandita.';
@@ -849,6 +879,7 @@ function dataUrlToBlob(dataUrl) {
 async function getLocalSharedData() {
     const places = await getPlaces();
     const deletedPlaceIds = loadStoredList(DELETED_PLACES_KEY, (id) => typeof id === 'string');
+    const deletedMemoryIds = loadStoredList(DELETED_MEMORIES_KEY, (id) => typeof id === 'string' && id.length <= 128);
     const placeOverrides = loadPlaceOverrides();
     const placeRatings = loadPlaceRatings();
     const activePlaces = places.filter((place) =>
@@ -866,6 +897,7 @@ async function getLocalSharedData() {
     }
     return {
         memories,
+        deletedMemoryIds,
         poohSuggestions,
         dateIdeas: customDates,
         savedDateIds,
@@ -893,6 +925,40 @@ function mergeEntries(first, second, getKey) {
     const entries = new Map();
     [...first, ...second].forEach((entry) => entries.set(getKey(entry), entry));
     return [...entries.values()];
+}
+
+function normalizeMemory(memory) {
+    const date = typeof memory.date === 'string' ? memory.date : '';
+    const text = typeof memory.text === 'string' ? memory.text : '';
+    let id = typeof memory.id === 'string' && memory.id ? memory.id : '';
+    if (!id) {
+        let hash = 2166136261;
+        for (const character of `${date}\0${text}`) {
+            hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
+        }
+        id = `legacy-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+    }
+    const updatedAt = typeof memory.updatedAt === 'string' && Number.isFinite(Date.parse(memory.updatedAt))
+        ? memory.updatedAt
+        : date;
+    return { ...memory, id, text, date, updatedAt };
+}
+
+function mergeMemories(localMemories, remoteMemories, deletedIds) {
+    const deleted = new Set(deletedIds || []);
+    const merged = new Map();
+    [...(localMemories || []), ...(remoteMemories || [])].forEach((entry) => {
+        if (!entry || typeof entry.text !== 'string' || typeof entry.date !== 'string') return;
+        const memory = normalizeMemory(entry);
+        if (deleted.has(memory.id)) return;
+        const previous = merged.get(memory.id);
+        if (!previous || Date.parse(memory.updatedAt) >= Date.parse(previous.updatedAt)) {
+            merged.set(memory.id, memory);
+        }
+    });
+    return [...merged.values()]
+        .sort((first, second) => second.date.localeCompare(first.date))
+        .slice(0, 1000);
 }
 
 function mergePlaces(localPlaces, remotePlaces) {
@@ -954,6 +1020,10 @@ function mergeSharedData(local, remote, remoteUpdatedAt) {
         ...(local.deletedPlaceIds || []),
         ...(remote.deletedPlaceIds || [])
     ])];
+    const deletedMemoryIds = [...new Set([
+        ...(local.deletedMemoryIds || []),
+        ...(remote.deletedMemoryIds || [])
+    ])];
     const mergedOverrides = { ...(remote.placeOverrides || {}), ...(local.placeOverrides || {}) };
     const mergedPlaceRatings = {};
     const ratingIds = new Set([
@@ -971,8 +1041,8 @@ function mergeSharedData(local, remote, remoteUpdatedAt) {
     });
 
     return {
-        memories: mergeEntries(local.memories, remote.memories || [], (entry) => `${entry.date}\0${entry.text}`)
-            .sort((first, second) => second.date.localeCompare(first.date)).slice(0, 1000),
+        memories: mergeMemories(local.memories, remote.memories || [], deletedMemoryIds),
+        deletedMemoryIds,
         poohSuggestions: mergeEntries(local.poohSuggestions || [], remote.poohSuggestions || [], (suggestion) => suggestion.id)
             .sort((first, second) => second.createdAt.localeCompare(first.createdAt)).slice(0, 1000),
         dateIdeas: mergeEntries(local.dateIdeas, remote.dateIdeas || [], (idea) => idea.id).slice(0, 1000),
@@ -997,6 +1067,7 @@ function mergeSharedData(local, remote, remoteUpdatedAt) {
 
 async function saveLocalSharedData(data) {
     localStorage.setItem(MEMORIES_KEY, JSON.stringify(data.memories));
+    localStorage.setItem(DELETED_MEMORIES_KEY, JSON.stringify(data.deletedMemoryIds || []));
     localStorage.setItem(POOH_SUGGESTIONS_KEY, JSON.stringify(data.poohSuggestions || []));
     localStorage.setItem(DATE_IDEAS_KEY, JSON.stringify(data.dateIdeas));
     localStorage.setItem(SAVED_DATES_KEY, JSON.stringify(data.savedDateIds));
@@ -1029,7 +1100,7 @@ async function saveLocalSharedData(data) {
         transaction.onabort = () => reject(transaction.error || new Error('Se interrumpió la importación de fotos.'));
     });
 
-    memories = data.memories;
+    memories = (data.memories || []).map(normalizeMemory);
     poohSuggestions = data.poohSuggestions || [];
     customDates = data.dateIdeas;
     savedDateIds = data.savedDateIds;
@@ -1855,7 +1926,7 @@ function loadMemories() {
         return memories.filter((memory) =>
             memory && typeof memory.text === 'string' &&
             typeof memory.date === 'string'
-        );
+        ).map(normalizeMemory);
     } catch (error) {
         console.error('No se pudieron cargar los recuerdos guardados:', error);
         showToast('No se pudieron abrir tus recuerdos guardados en este dispositivo.');
@@ -1874,7 +1945,8 @@ if (savedReminderTime) {
 
 function renderMemories() {
     memoryList.replaceChildren();
-    [...memories].sort((first, second) => String(second.date).localeCompare(String(first.date))).forEach((memory) => {
+    const visibleMemories = memories.filter((memory) => !pendingMemoryDeletes.has(memory.id));
+    [...visibleMemories].sort((first, second) => String(second.date).localeCompare(String(first.date))).forEach((memory) => {
         const item = document.createElement('li');
         item.className = 'memory-item';
         const time = document.createElement('time');
@@ -1885,12 +1957,122 @@ function renderMemories() {
         const text = document.createElement('span');
         text.className = 'memory-text';
         text.textContent = memory.text;
-        item.append(time, text);
+        const copy = document.createElement('div');
+        copy.className = 'memory-copy';
+        copy.append(time, text);
+
+        const actions = document.createElement('div');
+        actions.className = 'memory-actions';
+        const editButton = document.createElement('button');
+        editButton.className = 'memory-action-button';
+        editButton.type = 'button';
+        editButton.textContent = 'Editar';
+        editButton.dataset.memoryAction = 'edit';
+        editButton.dataset.memoryId = memory.id;
+        editButton.setAttribute('aria-label', `Editar recuerdo: ${memory.text}`);
+        editButton.addEventListener('click', () => beginMemoryEdit(memory, item, copy, actions));
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'memory-action-button memory-delete-button';
+        deleteButton.type = 'button';
+        deleteButton.textContent = 'Borrar';
+        deleteButton.dataset.memoryAction = 'delete';
+        deleteButton.dataset.memoryId = memory.id;
+        deleteButton.setAttribute('aria-label', `Borrar recuerdo: ${memory.text}`);
+        deleteButton.addEventListener('click', () => queueMemoryDelete(memory));
+        actions.append(editButton, deleteButton);
+        item.append(copy, actions);
         memoryList.append(item);
     });
-    memoryEmpty.hidden = memories.length > 0;
+    memoryEmpty.hidden = visibleMemories.length > 0;
     renderBearWardrobe();
     renderMemoryAlbum(albumPlaces);
+}
+
+function beginMemoryEdit(memory, item, copy, actions) {
+    const form = document.createElement('form');
+    form.className = 'memory-edit-form';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.maxLength = 160;
+    input.required = true;
+    input.value = memory.text;
+    input.setAttribute('aria-label', 'Editar notita');
+    const saveButton = document.createElement('button');
+    saveButton.type = 'submit';
+    saveButton.className = 'memory-action-button memory-save-button';
+    saveButton.textContent = 'Guardar';
+    const cancelButton = document.createElement('button');
+    cancelButton.type = 'button';
+    cancelButton.className = 'memory-action-button';
+    cancelButton.textContent = 'Cancelar';
+    form.append(input, saveButton, cancelButton);
+    actions.hidden = true;
+    copy.replaceChildren(item.querySelector('.memory-date'), form);
+    item.classList.add('is-editing');
+    input.focus();
+    input.select();
+
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const text = input.value.trim();
+        if (!text) {
+            input.focus();
+            return;
+        }
+        const nextMemories = memories.map((entry) => entry.id === memory.id
+            ? { ...entry, text, updatedAt: new Date().toISOString() }
+            : entry);
+        try {
+            localStorage.setItem(MEMORIES_KEY, JSON.stringify(nextMemories));
+            memories = nextMemories;
+            renderMemories();
+            scheduleCloudSync();
+            showToast('Notita actualizada.');
+        } catch (error) {
+            console.error('No se pudo actualizar la notita:', error);
+            showToast('No se pudo guardar el cambio. Comprueba el espacio disponible.');
+        }
+    });
+    cancelButton.addEventListener('click', () => {
+        renderMemories();
+        [...memoryList.querySelectorAll('[data-memory-action="edit"]')]
+            .find((button) => button.dataset.memoryId === memory.id)?.focus();
+    });
+}
+
+function queueMemoryDelete(memory) {
+    if (pendingMemoryDeletes.has(memory.id)) return;
+    const timer = setTimeout(() => {
+        pendingMemoryDeletes.delete(memory.id);
+        const nextMemories = memories.filter((entry) => entry.id !== memory.id);
+        const deletedIds = loadStoredList(DELETED_MEMORIES_KEY, (id) => typeof id === 'string' && id.length <= 128);
+        if (!deletedIds.includes(memory.id)) deletedIds.push(memory.id);
+        try {
+            localStorage.setItem(DELETED_MEMORIES_KEY, JSON.stringify(deletedIds));
+            localStorage.setItem(MEMORIES_KEY, JSON.stringify(nextMemories));
+            memories = nextMemories;
+            renderMemories();
+            scheduleCloudSync();
+            showToast('Notita borrada.');
+        } catch (error) {
+            console.error('No se pudo borrar la notita:', error);
+            showToast('No se pudo borrar. Comprueba el espacio disponible.');
+            renderMemories();
+        }
+    }, 6000);
+    pendingMemoryDeletes.set(memory.id, { timer });
+    renderMemories();
+    showToast('Notita borrada.', {
+        label: 'Deshacer',
+        duration: 6000,
+        onAction: () => {
+            const pending = pendingMemoryDeletes.get(memory.id);
+            if (pending) clearTimeout(pending.timer);
+            pendingMemoryDeletes.delete(memory.id);
+            renderMemories();
+            showToast('Listo, la notita sigue guardada.');
+        }
+    });
 }
 
 function renderMemoryAlbum(places = albumPlaces) {
@@ -1900,7 +2082,7 @@ function renderMemoryAlbum(places = albumPlaces) {
     albumPhotoUrls = [];
     grid.replaceChildren();
 
-    const entries = memories.map((memory) => ({
+    const entries = memories.filter((memory) => !pendingMemoryDeletes.has(memory.id)).map((memory) => ({
         type: 'note',
         title: 'Una notita para guardar',
         text: memory.text,
@@ -2361,7 +2543,9 @@ document.querySelector('#memory-form').addEventListener('submit', (event) => {
         return;
     }
 
-    const nextMemories = [{ text, date: new Date().toISOString() }, ...memories];
+    const date = new Date().toISOString();
+    const id = globalThis.crypto?.randomUUID?.() || `memory-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const nextMemories = [{ id, text, date, updatedAt: date }, ...memories];
     try {
         localStorage.setItem(MEMORIES_KEY, JSON.stringify(nextMemories));
         memories = nextMemories;
@@ -2422,19 +2606,45 @@ window.setTimeout(() => loadingScreen?.classList.add('is-hidden'), 3000);
 
 const sectionMenuToggle = document.querySelector('#section-menu-toggle');
 const sectionMenu = document.querySelector('#section-menu');
+const currentSectionName = document.querySelector('#current-section-name');
+const currentSectionBadge = document.querySelector('.current-section-label');
 const appViews = [...document.querySelectorAll('[data-app-view]')];
+const appViewNames = {
+    home: 'Inicio',
+    memories: 'Recuerdos',
+    album: 'Álbum',
+    places: 'Lugares',
+    recommendations: 'Recomendados',
+    'pooh-corner': 'Ideas de Pooh',
+    plans: 'Planes',
+    together: 'Para nosotros',
+    settings: 'Ajustes'
+};
 const recommendationFilters = document.querySelector('#recommendation-filters');
 const recommendationCards = [...document.querySelectorAll('.recommendation-card')];
 
-function closeSectionMenu() {
+function closeSectionMenu({ restoreFocus = false } = {}) {
+    const focusWasInsideMenu = sectionMenu.contains(document.activeElement);
     sectionMenu.hidden = true;
     sectionMenuToggle.setAttribute('aria-expanded', 'false');
+    if (restoreFocus && focusWasInsideMenu) sectionMenuToggle.focus({ preventScroll: true });
 }
 
 sectionMenuToggle.addEventListener('click', () => {
     const isOpening = sectionMenu.hidden;
     sectionMenu.hidden = !isOpening;
     sectionMenuToggle.setAttribute('aria-expanded', String(isOpening));
+});
+
+document.addEventListener('click', (event) => {
+    if (sectionMenu.hidden) return;
+    if (sectionMenu.contains(event.target) || sectionMenuToggle.contains(event.target)) return;
+    closeSectionMenu();
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || sectionMenu.hidden) return;
+    closeSectionMenu({ restoreFocus: true });
 });
 
 recommendationFilters?.addEventListener('click', (event) => {
@@ -2451,13 +2661,44 @@ recommendationFilters?.addEventListener('click', (event) => {
     });
 });
 
-function showAppView(selectedView) {
-    appViews.forEach((view) => { view.hidden = view.dataset.appView !== selectedView; });
+function showAppView(selectedView, { historyMode = 'push' } = {}) {
+    const nextView = appViews.find((view) => view.dataset.appView === selectedView);
+    if (!nextView) return;
+    const currentView = appViews.find((view) => !view.hidden);
+    const isChangingView = currentView?.dataset.appView !== selectedView;
+    appViews.forEach((view) => {
+        view.hidden = view.dataset.appView !== selectedView;
+        view.classList.remove('is-entering');
+    });
+    if (isChangingView && nextView) {
+        void nextView.offsetWidth;
+        nextView.classList.add('is-entering');
+        currentSectionBadge?.classList.remove('is-switching');
+        if (currentSectionBadge) {
+            void currentSectionBadge.offsetWidth;
+            currentSectionBadge.classList.add('is-switching');
+        }
+    }
     sectionMenu.querySelectorAll('[data-view-target]').forEach((button) => {
         if (button.dataset.viewTarget === selectedView) button.setAttribute('aria-current', 'page');
         else button.removeAttribute('aria-current');
     });
-    closeSectionMenu();
+    const sectionName = appViewNames[selectedView] || 'Secciones';
+    if (currentSectionName) currentSectionName.textContent = sectionName;
+    sectionMenuToggle.setAttribute('aria-label', `Abrir menú de secciones. Sección actual: ${sectionName}`);
+    document.title = selectedView === 'home'
+        ? 'Un poquito de miel para ti'
+        : `${sectionName} · Un poquito de miel`;
+    const restoreMenuFocus = !sectionMenu.hidden && sectionMenu.contains(document.activeElement);
+    closeSectionMenu({ restoreFocus: restoreMenuFocus });
+    if (isChangingView && historyMode !== 'none') {
+        const nextUrl = new URL(window.location.href);
+        if (selectedView === 'home') nextUrl.searchParams.delete('section');
+        else nextUrl.searchParams.set('section', selectedView);
+        const nextHistoryState = { ...window.history.state, section: selectedView };
+        if (historyMode === 'replace') window.history.replaceState(nextHistoryState, '', nextUrl);
+        else window.history.pushState(nextHistoryState, '', nextUrl);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -2473,8 +2714,16 @@ document.querySelector('.quick-access').addEventListener('click', (event) => {
 
 const requestedInitialView = new URLSearchParams(window.location.search).get('section');
 if (appViews.some((view) => view.dataset.appView === requestedInitialView)) {
-    showAppView(requestedInitialView);
+    showAppView(requestedInitialView, { historyMode: 'replace' });
 }
+
+window.addEventListener('popstate', () => {
+    const requestedView = new URLSearchParams(window.location.search).get('section');
+    const selectedView = appViews.some((view) => view.dataset.appView === requestedView)
+        ? requestedView
+        : 'home';
+    showAppView(selectedView, { historyMode: 'none' });
+});
 
 syncIndicator.addEventListener('click', () => showAppView('settings'));
 placesSearch.addEventListener('input', applyPlaceFilters);

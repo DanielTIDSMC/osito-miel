@@ -50,7 +50,8 @@ test('saves shared state and rejects stale writes without losing data', async ()
         ...initial,
         data: {
             ...initial.data,
-            memories: [{ text: 'Recuerdo de prueba', date: '2026-10-07' }],
+            memories: [{ id: 'memory-test', text: 'Recuerdo de prueba', date: '2026-10-07T00:00:00.000Z', updatedAt: '2026-10-07T00:00:00.000Z' }],
+            deletedMemoryIds: ['memory-removed'],
             deletedPlaceIds: ['place-deleted'],
             placeOverrides: { 'chat-cafeteria-fortin': '2026-06-26' },
             dateStates: { 'sunset-picnic': { saved: false, completed: true, updatedAt: '2026-10-07T00:00:00.000Z' } }
@@ -71,11 +72,30 @@ test('saves shared state and rejects stale writes without losing data', async ()
     const remote = await fetch(`${baseUrl}/api/state`, { headers }).then((response) => response.json());
     assert.equal(remote.revision, 1);
     assert.equal(remote.data.memories[0].text, 'Recuerdo de prueba');
+    assert.deepEqual(remote.data.deletedMemoryIds, ['memory-removed']);
     assert.deepEqual(remote.data.deletedPlaceIds, ['place-deleted']);
     assert.deepEqual(remote.data.placeOverrides, { 'chat-cafeteria-fortin': '2026-06-26' });
     assert.equal(remote.data.dateStates['sunset-picnic'].completed, true);
     const disk = JSON.parse(await readFile(join(temporaryDirectory, 'data', 'state.json'), 'utf8'));
     assert.equal(disk.revision, 1);
+});
+
+test('rejects invalid deleted memory identifiers', async () => {
+    const headers = {
+        Authorization: `Bearer ${roomPassword}`,
+        'Content-Type': 'application/json',
+        Origin: 'https://danieltidsmc.github.io'
+    };
+    const current = await fetch(`${baseUrl}/api/state`, { headers }).then((response) => response.json());
+    const response = await fetch(`${baseUrl}/api/state`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+            ...current,
+            data: { ...current.data, deletedMemoryIds: [{ id: 'not-a-valid-id' }] }
+        })
+    });
+    assert.equal(response.status, 400);
 });
 
 test('shares Pooh suggestions and rejects malformed suggestions', async () => {

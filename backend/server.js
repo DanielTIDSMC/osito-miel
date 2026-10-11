@@ -10,6 +10,7 @@ const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 const MAX_PHOTOS_BYTES = 7 * 1024 * 1024;
 const ALLOWED_DATA_KEYS = new Set([
     'memories',
+    'deletedMemoryIds',
     'dateIdeas',
     'savedDateIds',
     'pickedDateId',
@@ -48,6 +49,16 @@ function validateData(data) {
     for (const key of ['memories', 'dateIdeas', 'savedDateIds', 'completedDateIds', 'dailyAnswers', 'places', 'deletedPlaceIds']) {
         if (data[key] !== undefined && (!Array.isArray(data[key]) || data[key].length > 1000)) return false;
     }
+    if (data.deletedMemoryIds !== undefined && (
+        !Array.isArray(data.deletedMemoryIds) || data.deletedMemoryIds.length > 10000 ||
+        data.deletedMemoryIds.some((id) => typeof id !== 'string' || !id || id.length > 128)
+    )) return false;
+    if (data.memories !== undefined && data.memories.some((memory) =>
+        !memory || typeof memory !== 'object' || Array.isArray(memory) ||
+        typeof memory.text !== 'string' || memory.text.length > 160 ||
+        typeof memory.date !== 'string' || (memory.id !== undefined && (typeof memory.id !== 'string' || !memory.id || memory.id.length > 128)) ||
+        (memory.updatedAt !== undefined && (typeof memory.updatedAt !== 'string' || !Number.isFinite(Date.parse(memory.updatedAt))))
+    )) return false;
     if (data.dateStates !== undefined && (
         !data.dateStates || typeof data.dateStates !== 'object' || Array.isArray(data.dateStates) ||
         Object.keys(data.dateStates).length > 1000 ||
@@ -143,6 +154,7 @@ async function loadState(filePath) {
                 updatedAt: '',
                 data: {
                     memories: [],
+                    deletedMemoryIds: [],
                     dateIdeas: [],
                     savedDateIds: [],
                     pickedDateId: null,
