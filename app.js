@@ -882,6 +882,7 @@ async function getLocalSharedData() {
             name: place.name,
             date: place.date,
             note: place.note,
+            updatedAt: place.updatedAt || '',
             photo: place.photo instanceof Blob ? await blobToDataUrl(place.photo) : null,
             additionalPhotos: await Promise.all((place.additionalPhotos || []).filter((photo) => photo instanceof Blob).map((photo) => blobToDataUrl(photo)))
         })))
@@ -892,6 +893,29 @@ function mergeEntries(first, second, getKey) {
     const entries = new Map();
     [...first, ...second].forEach((entry) => entries.set(getKey(entry), entry));
     return [...entries.values()];
+}
+
+function mergePlaces(localPlaces, remotePlaces) {
+    const places = new Map();
+    [...(localPlaces || []), ...(remotePlaces || [])].forEach((place) => {
+        const previous = places.get(place.id);
+        if (!previous) {
+            places.set(place.id, place);
+            return;
+        }
+        const previousUpdatedAt = Date.parse(previous.updatedAt || '');
+        const nextUpdatedAt = Date.parse(place.updatedAt || '');
+        // On equal or missing timestamps prefer the server copy. This prevents
+        // an older local copy from hiding photos uploaded by the other phone.
+        if (!Number.isFinite(previousUpdatedAt) && !Number.isFinite(nextUpdatedAt)) {
+            const photoCount = (entry) => Number(Boolean(entry.photo)) + (entry.additionalPhotos || []).length;
+            if (photoCount(place) >= photoCount(previous)) places.set(place.id, place);
+        } else if (
+            (Number.isFinite(nextUpdatedAt) && (!Number.isFinite(previousUpdatedAt) || nextUpdatedAt >= previousUpdatedAt))) {
+            places.set(place.id, place);
+        }
+    });
+    return [...places.values()];
 }
 
 function mergeSharedData(local, remote, remoteUpdatedAt) {
@@ -966,11 +990,7 @@ function mergeSharedData(local, remote, remoteUpdatedAt) {
         deletedPlaceIds,
         placeOverrides: mergedOverrides,
         placeRatings: mergedPlaceRatings,
-        places: mergeEntries(
-            localIsNewer ? (remote.places || []) : local.places,
-            localIsNewer ? local.places : (remote.places || []),
-            (place) => place.id
-        )
+        places: mergePlaces(local.places, remote.places)
             .filter((place) => !deletedPlaceIds.includes(place.id))
     };
 }
@@ -999,6 +1019,7 @@ async function saveLocalSharedData(data) {
             name: place.name,
             date: place.date,
             note: place.note,
+            updatedAt: place.updatedAt || '',
             photo: place.photo ? dataUrlToBlob(place.photo) : null,
             additionalPhotos: (place.additionalPhotos || []).map((photo) => dataUrlToBlob(photo))
         }));
@@ -1026,15 +1047,27 @@ async function saveLocalSharedData(data) {
 }
 
 async function cloudRequest(path, options = {}) {
-    const response = await fetch(`${cloudConfig.apiUrl}${path}`, {
-        ...options,
-        cache: 'no-store',
-        headers: {
-            ...(options.headers || {}),
-            Authorization: `Bearer ${cloudConfig.password}`
-        }
-    });
-    const body = await response.json().catch(() => ({}));
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+    let response;
+    let body;
+    try {
+        response = await fetch(`${cloudConfig.apiUrl}${path}`, {
+            ...options,
+            cache: 'no-store',
+            signal: controller.signal,
+            headers: {
+                ...(options.headers || {}),
+                Authorization: `Bearer ${cloudConfig.password}`
+            }
+        });
+        body = await response.json().catch(() => ({}));
+    } catch (error) {
+        if (error.name === 'AbortError') throw new Error('La sincronización tardó demasiado. Revisa la conexión e inténtalo de nuevo.');
+        throw error;
+    } finally {
+        clearTimeout(timeout);
+    }
     if (!response.ok && response.status !== 409) {
         if (response.status === 401) throw new Error('La clave compartida no coincide. Revisen que sea idéntica en los dos celulares.');
         if (response.status === 413) throw new Error('Las fotos ocupan demasiado espacio para sincronizar. Elijan fotos más pequeñas.');
@@ -1150,9 +1183,20 @@ syncForm.addEventListener('submit', async (event) => {
     syncConnectButton.disabled = true;
     setSyncStatus('Verificando el servicio privado…');
     try {
-        const response = await fetch(`${apiUrl}/health`, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`El servicio respondió con error ${response.status}.`);
-        const health = await response.json();
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15_000);
+        let response;
+        let health;
+        try {
+            response = await fetch(`${apiUrl}/health`, { cache: 'no-store', signal: controller.signal });
+            if (!response.ok) throw new Error(`El servicio respondió con error ${response.status}.`);
+            health = await response.json();
+        } catch (error) {
+            if (error.name === 'AbortError') throw new Error('La validación tardó demasiado. Revisa tu conexión e inténtalo de nuevo.');
+            throw error;
+        } finally {
+            clearTimeout(timeout);
+        }
         if (health.status !== 'ok') throw new Error('El servicio respondió, pero no confirmó que está listo.');
         cloudConfig = { apiUrl, password };
         localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(cloudConfig));
@@ -1605,6 +1649,7 @@ async function renderPlaces() {
                         name: place.name,
                         date: current?.date || place.date || '',
                         note: current?.note || place.note || '',
+                        updatedAt: new Date().toISOString(),
                         photo: newPhotos[0],
                         additionalPhotos: [
                             ...(current?.additionalPhotos || []),
@@ -1664,6 +1709,7 @@ async function renderPlaces() {
                         name: place.name,
                         date: current?.date || place.date || '',
                         note: current?.note || place.note || '',
+                        updatedAt: new Date().toISOString(),
                         photo: current?.photo || null,
                         additionalPhotos: [...(current?.additionalPhotos || []), ...newPhotos]
                     });
@@ -2182,6 +2228,7 @@ placeForm.addEventListener('submit', async (event) => {
         name,
         date,
         note: document.querySelector('#place-note').value.trim(),
+        updatedAt: new Date().toISOString(),
         photo: photos[0],
         additionalPhotos: photos.slice(1)
     };
