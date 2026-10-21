@@ -5,9 +5,9 @@ import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import webPush from 'web-push';
 
-const MAX_REQUEST_BYTES = 12 * 1024 * 1024;
-const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
-const MAX_PHOTOS_BYTES = 7 * 1024 * 1024;
+const MAX_REQUEST_BYTES = 72 * 1024 * 1024;
+const MAX_PHOTO_BYTES = 7 * 1024 * 1024;
+const MAX_PHOTOS_BYTES = 50 * 1024 * 1024;
 const ALLOWED_DATA_KEYS = new Set([
     'memories',
     'deletedMemoryIds',

@@ -27,6 +27,7 @@ const COMPLETED_DATES_KEY = 'osito-miel.completed-dates.v1';
 const DATE_STATES_KEY = 'osito-miel.date-states.v1';
 const DAILY_ANSWERS_KEY = 'osito-miel.daily-answers.v1';
 const ANNIVERSARY_KEY = 'osito-miel.special-date.v1';
+const ANNIVERSARY_RECAP_SHOWN_KEY = 'osito-miel.anniversary-recap-shown.v1';
 const CLOUD_CONFIG_KEY = 'osito-miel.sync-config.v1';
 const CLOUD_UPDATED_KEY = 'osito-miel.sync-updated-at.v1';
 const CLOUD_REVISION_KEY = 'osito-miel.sync-revision.v1';
@@ -35,8 +36,8 @@ const PLACE_OVERRIDES_KEY = 'osito-miel.place-overrides.v1';
 const PLACE_RATINGS_KEY = 'osito-miel.place-ratings.v1';
 const PLACES_DATABASE = 'osito-miel-places';
 const PLACES_STORE = 'places';
-const MAX_SYNC_PLACE_PHOTO_BYTES = 2 * 1024 * 1024;
-const MAX_SYNC_PHOTOS_BYTES = 7 * 1024 * 1024;
+const MAX_SYNC_PLACE_PHOTO_BYTES = 7 * 1024 * 1024;
+const MAX_SYNC_PHOTOS_BYTES = 50 * 1024 * 1024;
 const MAX_PLACE_PHOTOS = 5;
 const PUSH_DEVICE_ID_KEY = 'osito-miel.push-device-id.v1';
 const PUSH_ENABLED_KEY = 'osito-miel.push-enabled.v1';
@@ -111,6 +112,7 @@ const dailyQuestionStatus = document.querySelector('#daily-question-status');
 const anniversaryForm = document.querySelector('#anniversary-form');
 const anniversaryDateInput = document.querySelector('#anniversary-date');
 const anniversaryStatus = document.querySelector('#anniversary-status');
+const anniversaryRecap = document.querySelector('#anniversary-recap');
 const placeForm = document.querySelector('#place-form');
 const placePhotoInput = document.querySelector('#place-photo');
 const placePhotoPreview = document.querySelector('#place-photo-preview');
@@ -701,6 +703,67 @@ function updateAnniversaryStatus(dateValue) {
         `Llevan ${daysSinceStart} días compartiendo momentos; faltan ${daysUntil} días para su aniversario${yearsTogether > 0 ? ` número ${yearsTogether}` : ''} ♡`;
 }
 
+function getRecapDate(value) {
+    if (typeof value !== 'string' || !value) return null;
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
+        ? new Date(`${value}T12:00:00`)
+        : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function dateIsInAnniversaryYear(value, periodStart, anniversaryDay) {
+    const date = getRecapDate(value);
+    return Boolean(date && compareLocalDates(date, periodStart) >= 0 && compareLocalDates(date, anniversaryDay) <= 0);
+}
+
+function getAnniversaryRecap(dateValue) {
+    if (!dateValue || !/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return null;
+    const [startYear, month, day] = dateValue.split('-').map(Number);
+    const today = new Date();
+    const anniversaryDay = makeAnniversaryDate(today.getFullYear(), month, day);
+    const yearsTogether = today.getFullYear() - startYear;
+    if (yearsTogether < 1 || compareLocalDates(today, anniversaryDay) !== 0) return null;
+
+    const periodStart = makeAnniversaryDate(today.getFullYear() - 1, month, day);
+    const yearMemories = memories.filter((memory) => dateIsInAnniversaryYear(memory.date, periodStart, today));
+    const yearPlaces = albumPlaces.filter((place) => dateIsInAnniversaryYear(place.date, periodStart, today));
+    const photoCount = yearPlaces.reduce((total, place) => total +
+        Number(Boolean(place.photo)) +
+        (place.additionalPhotos || []).length +
+        (place.photos || []).length, 0);
+    const completedPlans = Object.values(dateStates).filter((state) =>
+        state.completed && dateIsInAnniversaryYear(state.updatedAt, periodStart, today)
+    ).length;
+
+    return { year: today.getFullYear(), yearsTogether, periodStart, memories: yearMemories.length, places: yearPlaces.length, photos: photoCount, plans: completedPlans };
+}
+
+function maybeShowAnniversaryRecap(dateValue = anniversaryDateInput.value) {
+    const localPreview = ['localhost', '127.0.0.1'].includes(window.location.hostname) &&
+        new URLSearchParams(window.location.search).get('preview') === 'anniversary-recap';
+    const today = new Date();
+    const previewDate = `${today.getFullYear() - 3}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const recap = getAnniversaryRecap(localPreview ? previewDate : dateValue);
+    if (!recap || anniversaryRecap.open) return;
+    if (!localPreview) {
+        try {
+            if (localStorage.getItem(ANNIVERSARY_RECAP_SHOWN_KEY) === String(recap.year)) return;
+            localStorage.setItem(ANNIVERSARY_RECAP_SHOWN_KEY, String(recap.year));
+        } catch (error) {
+            console.error('No se pudo registrar el resumen anual mostrado:', error);
+        }
+    }
+
+    document.querySelector('#annual-recap-kicker').textContent = `${localPreview ? 'VISTA PREVIA · ' : ''}ANIVERSARIO NÚMERO ${recap.yearsTogether}`;
+    document.querySelector('#annual-recap-title').textContent = `Un año más de ustedes, ${recap.yearsTogether} ${recap.yearsTogether === 1 ? 'año' : 'años'} juntitos`;
+    document.querySelector('#annual-recap-period').textContent = `Así se llenó su frasquito desde ${new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }).format(recap.periodStart)}.`;
+    document.querySelector('#annual-recap-memories').textContent = String(recap.memories);
+    document.querySelector('#annual-recap-places').textContent = String(recap.places);
+    document.querySelector('#annual-recap-photos').textContent = String(recap.photos);
+    document.querySelector('#annual-recap-plans').textContent = String(recap.plans);
+    anniversaryRecap.showModal();
+}
+
 function showPlaceFormError(message, error) {
     console.error(message, error);
     const errorText = 'No se pudo guardar o cargar el álbum. Revisa el espacio disponible e inténtalo de nuevo.';
@@ -847,7 +910,7 @@ function loadCloudConfig() {
             syncPasswordInput.value = cloudConfig.password;
             updateSyncControls();
             if (navigator.onLine) {
-                void runCloudSync();
+                return runCloudSync();
             } else {
                 setSyncStatus('Sin conexión. Sus cambios siguen guardados aquí y se sincronizarán al volver a estar en línea.');
             }
@@ -856,6 +919,7 @@ function loadCloudConfig() {
         console.error('No se pudo recuperar la conexión compartida:', error);
         setSyncStatus('No se pudo leer la conexión guardada. Vuelve a introducir la dirección y la clave.', 'error');
     }
+    return Promise.resolve();
 }
 
 function blobToDataUrl(blob) {
@@ -1423,7 +1487,7 @@ async function compressPlacePhoto(file) {
 
 async function assertPlacePhotoBatchFits(placeId, newPhotos, replacePrimary = false) {
     if (newPhotos.some((photo) => photo.size > MAX_SYNC_PLACE_PHOTO_BYTES)) {
-        throw new Error('Cada foto debe quedar por debajo de 2 MB. Elige imágenes más pequeñas.');
+        throw new Error('Cada foto debe quedar por debajo de 7 MB. Elige imágenes más pequeñas.');
     }
     const places = await getPlaces();
     const existingBytes = places.reduce((total, place) => {
@@ -1436,7 +1500,7 @@ async function assertPlacePhotoBatchFits(placeId, newPhotos, replacePrimary = fa
     }, 0);
     const addedBytes = newPhotos.reduce((total, photo) => total + photo.size, 0);
     if (existingBytes + addedBytes > MAX_SYNC_PHOTOS_BYTES) {
-        throw new Error('El álbum puede sincronizar hasta 7 MB de fotos. Quita o reduce algunas antes de agregar más.');
+        throw new Error('El álbum puede sincronizar hasta 50 MB de fotos. Quita o reduce algunas antes de agregar más.');
     }
 }
 
@@ -2482,6 +2546,7 @@ anniversaryForm.addEventListener('submit', (event) => {
     }
     updateAnniversaryStatus(date);
     scheduleCloudSync();
+    maybeShowAnniversaryRecap(date);
     showToast('Su fecha especial quedó guardada ♡');
 });
 
@@ -2593,13 +2658,14 @@ if (pickedDateId) {
     if (pickedDate) datePickStatus.textContent = `Plan elegido: ${pickedDate.title}. ¡Ya tienen una próxima cita pendiente!`;
 }
 renderDates();
-loadCloudConfig();
+const initialCloudSync = loadCloudConfig();
 
 const loadingScreen = document.querySelector('#loading-screen');
 const minimumLoadingTime = new Promise((resolve) => setTimeout(resolve, 500));
-Promise.all([initialContentReady, minimumLoadingTime]).then(() => {
+Promise.all([initialContentReady, minimumLoadingTime, initialCloudSync]).then(() => {
     loadingScreen.classList.add('is-hidden');
     window.setTimeout(() => loadingScreen.remove(), 450);
+    maybeShowAnniversaryRecap();
 });
 window.setTimeout(() => loadingScreen?.classList.add('is-hidden'), 3000);
 
@@ -2744,6 +2810,11 @@ photoViewerNext.addEventListener('click', () => movePhotoViewer(1));
 document.querySelector('#photo-viewer-close').addEventListener('click', () => photoViewer.close());
 photoViewer.addEventListener('click', (event) => {
     if (event.target === photoViewer) photoViewer.close();
+});
+document.querySelector('#annual-recap-close').addEventListener('click', () => anniversaryRecap.close());
+document.querySelector('#annual-recap-done').addEventListener('click', () => anniversaryRecap.close());
+anniversaryRecap.addEventListener('click', (event) => {
+    if (event.target === anniversaryRecap) anniversaryRecap.close();
 });
 photoViewer.addEventListener('keydown', (event) => {
     if (event.key === 'ArrowLeft') movePhotoViewer(-1);

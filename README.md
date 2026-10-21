@@ -6,7 +6,7 @@ PWA para guardar recuerdos, planes y lugares en pareja. Incluye modo oscuro, fun
 
 El álbum incluye lugares y reseñas que aparecen en el chat exportado, además de fotos identificadas por el contexto del mensaje. Las fechas quedan como “Fecha por confirmar” cuando el chat no especifica cuándo fueron.
 
-Cada tarjeta tiene la opción **Cambiar foto**. La imagen nueva se optimiza y queda guardada localmente; al conectar la sincronización, también se comparte con el otro dispositivo. Para sincronizar, cada foto puede pesar hasta 2 MB y el conjunto de fotos del álbum hasta 7 MB.
+Cada tarjeta tiene la opción **Cambiar foto**. La imagen nueva se optimiza y queda guardada localmente; al conectar la sincronización, también se comparte con el otro dispositivo. Para sincronizar, cada foto puede pesar hasta 7 MB y el conjunto de fotos del álbum hasta 50 MB.
 
 **Privacidad:** las fotos del chat y la lista de lugares están incluidas en los archivos estáticos del sitio de GitHub Pages. Cualquiera que tenga el enlace público puede acceder a esos archivos. Las nuevas fotos y recuerdos creados dentro de la app permanecen en el dispositivo hasta conectar la sincronización.
 
@@ -36,6 +36,6 @@ La API se puede probar con `npm run test:api`.
 
 ## Fotos multiples y avisos push
 
-Cada lugar admite hasta cinco fotos. Las fotos se comprimen en el dispositivo, con un maximo de 2 MB por foto y 7 MB en total al sincronizar.
+Cada lugar admite hasta cinco fotos. Las fotos se comprimen en el dispositivo, con un maximo de 7 MB por foto y 50 MB en total al sincronizar.
 
 En Ajustes, activa las notificaciones push una vez en cada celular. El navegador pedira permiso; cuando un dispositivo sincronice un cambio, los otros recibiran un aviso. Las claves VAPID y suscripciones se guardan junto a DATA_FILE, por lo que el volumen persistente de Railway debe seguir montado en /data.
