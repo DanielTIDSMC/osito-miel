@@ -10,8 +10,8 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="assets/icons/icon.svg">
-    <link rel="stylesheet" href="styles.css?v=memory-tools-v5">
-    <script src="app.js?v=memory-tools-v5" defer></script>
+    <link rel="stylesheet" href="styles.css?v=anniversary-recap-v7">
+    <script src="app.js?v=anniversary-recap-v7" defer></script>
 </head>
 <body>
     <div id="loading-screen" class="loading-screen" role="status" aria-live="polite">
@@ -527,6 +527,24 @@
                     <button id="photo-viewer-next" class="photo-viewer-nav" type="button" aria-label="Foto siguiente">&rsaquo;</button>
                 </div>
                 <p id="photo-viewer-count" class="photo-viewer-count" aria-live="polite"></p>
+            </div>
+        </dialog>
+
+        <dialog id="anniversary-recap" class="anniversary-recap" aria-labelledby="annual-recap-title">
+            <div class="anniversary-recap-panel">
+                <button id="annual-recap-close" class="photo-viewer-close" type="button" aria-label="Cerrar resumen">&times;</button>
+                <span class="annual-recap-heart" aria-hidden="true">♡</span>
+                <p id="annual-recap-kicker" class="eyebrow">UN AÑO MÁS DE USTEDES</p>
+                <h2 id="annual-recap-title">Su año juntitos</h2>
+                <p id="annual-recap-period" class="annual-recap-period"></p>
+                <div class="annual-recap-stats" aria-label="Resumen del último año">
+                    <article><strong id="annual-recap-memories">0</strong><span>notitas guardadas</span></article>
+                    <article><strong id="annual-recap-places">0</strong><span>lugares visitados</span></article>
+                    <article><strong id="annual-recap-photos">0</strong><span>fotos en el álbum</span></article>
+                    <article><strong id="annual-recap-plans">0</strong><span>planes cumplidos</span></article>
+                </div>
+                <p class="annual-recap-closing">Cada detalle hizo más bonito su año. Por todo lo que vivieron y por lo que viene. ♡</p>
+                <button id="annual-recap-done" class="add-date-button annual-recap-done" type="button">Seguir juntando recuerdos</button>
             </div>
         </dialog>
     </main>

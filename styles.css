@@ -501,6 +501,21 @@ h1 span { color: var(--honey-dark); font-style: italic; }
 .photo-viewer-nav { width: 40px; height: 48px; border: 1px solid var(--input-border); border-radius: 99px; background: var(--surface-honey); color: var(--honey-dark); cursor: pointer; font-size: 28px; }
 .photo-viewer-nav[hidden] { display: none; }
 .photo-viewer-count { margin: 0; color: var(--soft-ink); font-size: 11px; text-align: center; }
+.anniversary-recap { width: min(92vw, 560px); max-width: 560px; max-height: min(90vh, 760px); padding: 0; overflow: auto; border: 1px solid var(--hero-border); border-radius: 22px; background: var(--surface-strong); color: var(--ink); box-shadow: 0 24px 90px #0006; }
+.anniversary-recap::backdrop { background: #21170fbd; backdrop-filter: blur(5px); }
+.anniversary-recap-panel { position: relative; display: grid; justify-items: center; gap: 12px; padding: 36px clamp(18px, 5vw, 34px) 28px; text-align: center; }
+.annual-recap-heart { display: grid; width: 54px; height: 54px; place-items: center; border: 1px solid var(--hero-border); border-radius: 50%; background: var(--surface-honey); color: var(--honey-dark); font-size: 32px; animation: recap-heart 1.5s ease-in-out infinite alternate; }
+@keyframes recap-heart { to { transform: scale(1.08); } }
+.anniversary-recap .eyebrow { margin: 0; color: var(--honey-dark); font-size: 10px; font-weight: 700; letter-spacing: .16em; }
+.anniversary-recap h2 { max-width: 430px; margin: 0; font-family: "Fraunces", Georgia, serif; font-size: clamp(25px, 6vw, 36px); line-height: 1.15; }
+.annual-recap-period { max-width: 420px; margin: 0; color: var(--soft-ink); font-size: 12px; line-height: 1.6; }
+.annual-recap-stats { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-top: 5px; }
+.annual-recap-stats article { display: grid; gap: 4px; min-height: 84px; align-content: center; padding: 11px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface-memory); }
+.annual-recap-stats strong { color: var(--honey-dark); font-family: "Fraunces", Georgia, serif; font-size: 27px; line-height: 1; }
+.annual-recap-stats span { color: var(--soft-ink); font-size: 10px; }
+.annual-recap-closing { max-width: 390px; margin: 4px 0 0; color: var(--soft-ink); font-family: "Fraunces", Georgia, serif; font-size: 15px; font-style: italic; line-height: 1.55; }
+.annual-recap-done { min-height: 42px; margin-top: 2px; }
+@media (prefers-reduced-motion: reduce) { .annual-recap-heart { animation: none; } }
 .memory-timeline-heading { margin: 18px 0 0; color: var(--honey-dark); font-size: 11px; font-weight: 700; letter-spacing: .04em; }
 .memory-list { grid-template-columns: 1fr; gap: 11px; margin-top: 10px; padding-left: 13px; border-left: 1px solid var(--memory-border); }
 .memory-item { position: relative; display: grid; grid-template-columns: 1fr; gap: 4px; padding: 11px 13px; }
