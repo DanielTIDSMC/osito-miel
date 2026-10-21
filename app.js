@@ -1319,7 +1319,7 @@ syncForm.addEventListener('submit', async (event) => {
     setSyncStatus('Verificando el servicio privado…');
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15_000);
+        const timeout = setTimeout(() => controller.abort(), 60_000);
         let response;
         let health;
         try {
